@@ -1,93 +1,120 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Wifi } from 'lucide-react';
+import IntelligenceOverview from './pages/IntelligenceOverview';
+import SpatialView from './pages/SpatialView';
+import TigerRegistry from './pages/TigerRegistry';
+import DataIngest from './pages/DataIngest';
 
-function App() {
+const NAV_TABS = [
+  { id: 'overview',  label: 'OVERVIEW'  },
+  { id: 'spatial',   label: 'SPATIAL'   },
+  { id: 'registry',  label: 'REGISTRY'  },
+  { id: 'ingest',    label: 'INGEST'    },
+];
+
+function useLiveClock() {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(time.getHours())}:${pad(time.getMinutes())}:${pad(time.getSeconds())} IST`;
+}
+
+function TopCommandBar({ activeTab, onTabChange }) {
+  const clock = useLiveClock();
   return (
-    <div style={{
-      fontFamily: 'system-ui, sans-serif',
-      backgroundColor: '#0a0d14',
-      color: '#e2e8f0',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column'
+    <header style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 1.5rem', height: '48px',
+      backgroundColor: 'var(--bg-panel)', borderBottom: '1px solid var(--border-subtle)',
+      flexShrink: 0, zIndex: 100,
     }}>
-      {/* Premium Header */}
-      <header style={{
-        background: 'linear-gradient(90deg, #161b26 0%, #0d121f 100%)',
-        borderBottom: '1px solid #1f293d',
-        padding: '1.25rem 2rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{
-            background: 'radial-gradient(circle, #f97316 0%, #c2410c 100%)',
-            width: '2rem',
-            height: '2rem',
-            borderRadius: '0.375rem',
-            boxShadow: '0 0 12px rgba(249, 115, 22, 0.4)'
-          }} />
-          <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, tracking: '0.05em' }}>
-            Pench Tiger Reserve Triage & movement Intelligence
-          </h1>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ fontWeight: 800, fontSize: '0.9375rem', letterSpacing: '0.08em', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', marginRight: '1rem' }}>
+          MANTHAN<span style={{ color: 'var(--status-warning)' }}>4</span>
         </div>
-        <span style={{
-          fontSize: '0.875rem',
-          backgroundColor: '#1e293b',
-          padding: '0.25rem 0.75rem',
-          borderRadius: '9999px',
-          color: '#38bdf8',
-          fontWeight: '500'
-        }}>
-          Offline System Online
+        <div style={{ width: '1px', height: '20px', background: 'var(--border-default)', marginRight: '1rem' }} />
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: '1.5rem', display: 'none' }} className="brand-subtitle">
+          Pench Tiger Reserve Ops
         </span>
-      </header>
+        <nav className="nav-tab-wrapper">
+          {NAV_TABS.map(tab => (
+            <button key={tab.id} className={`nav-tab${activeTab === tab.id ? ' active' : ''}`} onClick={() => onTabChange(tab.id)}>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>SYS {clock}</span>
+        <div style={{ width: '1px', height: '14px', background: 'var(--border-default)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Wifi size={13} color="var(--status-normal)" />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--status-normal)', fontWeight: 600, letterSpacing: '0.05em' }}>DATA LINK SECURE</span>
+        </div>
+      </div>
+    </header>
+  );
+}
 
-      {/* Main content grid */}
-      <main style={{ padding: '2rem', flex: 1, display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
-        {/* Left pane - system stats */}
-        <section style={{
-          background: '#111827',
-          border: '1px solid #1f2937',
-          borderRadius: '0.75rem',
-          padding: '1.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.5rem'
-        }}>
-          <h2 style={{ fontSize: '1.125rem', color: '#f3f4f6', margin: 0 }}>System Console</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ background: '#1f2937', padding: '1rem', borderRadius: '0.5rem' }}>
-              <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>SD Cards Ingested</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff' }}>0</div>
-            </div>
-            <div style={{ background: '#1f2937', padding: '1rem', borderRadius: '0.5rem' }}>
-              <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Blanks Filtered</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>0%</div>
-            </div>
-            <div style={{ background: '#1f2937', padding: '1rem', borderRadius: '0.5rem' }}>
-              <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Active Deviation Alerts</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>0</div>
-            </div>
-          </div>
-        </section>
+export default function App() {
+  const [activeTab, setActiveTab]         = useState('overview');
+  // Lifted global state for cross-page continuity
+  const [selectedTiger, setSelectedTiger] = useState(null);
 
-        {/* Right pane - activity logs / map placeholders */}
-        <section style={{
-          background: '#111827',
-          border: '1px solid #1f2937',
-          borderRadius: '0.75rem',
-          padding: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#6b7280'
-        }}>
-          No data ingested. Insert an SD Card or specify an ingest directory to begin.
-        </section>
+  // Navigate + optionally carry a tiger selection
+  const handleNavigate = (tab, tiger) => {
+    if (tiger !== undefined) setSelectedTiger(tiger);
+    setActiveTab(tab);
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    // Clear tiger selection when user manually navigates away (except spatial/registry pair)
+    if (tab === 'overview' || tab === 'ingest') setSelectedTiger(null);
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <IntelligenceOverview
+            selectedTiger={selectedTiger}
+            onSelectTiger={setSelectedTiger}
+            onNavigate={handleNavigate}
+          />
+        );
+      case 'spatial':
+        return (
+          <SpatialView
+            selectedTiger={selectedTiger}
+            onSelectTiger={setSelectedTiger}
+            onNavigate={handleNavigate}
+          />
+        );
+      case 'registry':
+        return (
+          <TigerRegistry
+            selectedTiger={selectedTiger}
+            onSelectTiger={setSelectedTiger}
+            onNavigate={handleNavigate}
+          />
+        );
+      case 'ingest':
+        return <DataIngest />;
+      default:
+        return <IntelligenceOverview onNavigate={handleNavigate} />;
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      <TopCommandBar activeTab={activeTab} onTabChange={handleTabChange} />
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        {renderContent()}
       </main>
     </div>
   );
 }
-
-export default App;

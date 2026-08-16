@@ -1,0 +1,298 @@
+/* 
+  Manthan4 - Operational Intelligence Dashboard 
+  Theme: Command-and-control, GIS, wildlife research 
+*/
+
+:root {
+  /* Core Color System - Deep forest and muted natural tones */
+  --bg-base: #0B110E; /* Very deep forest/almost black */
+  --bg-panel: #121A16;
+  --bg-panel-hover: #18241F;
+  --bg-elevated: #1D2A24;
+  --bg-input: #23332B;
+
+  /* Borders - strict and structural, no glow */
+  --border-subtle: #202D26;
+  --border-default: #2D3D35;
+  --border-active: #4F6B5A;
+
+  /* Typography */
+  --text-primary: #EBEAE4; /* Warm off-white */
+  --text-secondary: #9BA9A0;
+  --text-muted: #6C7A71;
+  --text-inverse: #0B110E;
+
+  /* Semantic Colors */
+  --status-normal: #5C8A73; /* Muted green for normal ops */
+  --status-warning: #D98C40; /* Earthy amber */
+  --status-critical: #C45041; /* Controlled red */
+  --status-info: #4F86A6; /* Muted blue for telemetry */
+
+  /* Semantic Backgrounds (Low opacity) */
+  --status-normal-bg: rgba(92, 138, 115, 0.15);
+  --status-warning-bg: rgba(217, 140, 64, 0.15);
+  --status-critical-bg: rgba(196, 80, 65, 0.15);
+  --status-info-bg: rgba(79, 134, 166, 0.15);
+
+  /* Layout */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  
+  /* Strict, non-floaty shadows */
+  --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Scrollbars - Technical style */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: var(--radius-sm);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-active);
+}
+
+/* Utilities */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+.font-mono { font-family: var(--font-mono); }
+
+.flex { display: flex; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+
+/* Operational Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+.badge-normal {
+  background: var(--status-normal-bg);
+  color: var(--status-normal);
+  border-color: rgba(92, 138, 115, 0.3);
+}
+.badge-warning {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  border-color: rgba(217, 140, 64, 0.3);
+}
+.badge-critical {
+  background: var(--status-critical-bg);
+  color: var(--status-critical);
+  border-color: rgba(196, 80, 65, 0.3);
+}
+.badge-info {
+  background: var(--status-info-bg);
+  color: var(--status-info);
+  border-color: rgba(79, 134, 166, 0.3);
+}
+
+/* Panel Containers */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+}
+.panel-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.panel-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.panel-body {
+  padding: 1rem;
+  flex: 1;
+  overflow: auto;
+}
+
+/* Map Overrides */
+.leaflet-container {
+  background: var(--bg-base) !important;
+  font-family: var(--font-sans);
+}
+.leaflet-popup-content-wrapper {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  padding: 0;
+}
+.leaflet-popup-content {
+  margin: 0;
+  line-height: 1.5;
+}
+.leaflet-popup-tip {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-top: none;
+  border-left: none;
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--text-muted);
+  padding: 4px;
+}
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: var(--text-primary);
+}
+
+/* Custom Tactical Map Markers */
+.tactical-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tactical-marker-inner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-elevated);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+  position: relative;
+}
+.tactical-marker-normal .tactical-marker-inner { background: var(--status-normal); }
+.tactical-marker-info .tactical-marker-inner { background: var(--status-info); }
+.tactical-marker-warning .tactical-marker-inner { background: var(--status-warning); }
+.tactical-marker-critical .tactical-marker-inner { background: var(--status-critical); }
+.tactical-marker-selected .tactical-marker-inner::after {
+  content: '';
+  position: absolute;
+  top: -6px; left: -6px; right: -6px; bottom: -6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  animation: pulse-ring 1.5s infinite ease-out;
+}
+.tactical-marker-selected.tactical-marker-normal { color: var(--status-normal); }
+.tactical-marker-selected.tactical-marker-info { color: var(--status-info); }
+.tactical-marker-selected.tactical-marker-warning { color: var(--status-warning); }
+.tactical-marker-selected.tactical-marker-critical { color: var(--status-critical); }
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* Map Scale Control Override */
+.leaflet-control-scale-line {
+  background: var(--bg-panel) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  border-top: none !important;
+  font-family: var(--font-mono);
+  font-size: 0.65rem !important;
+  padding: 2px 4px !important;
+  text-shadow: none !important;
+  box-shadow: var(--shadow-panel) !important;
+}
+
+/* Compact Nav Tabs */
+.nav-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+  border-radius: var(--radius-sm);
+}
+.nav-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+.nav-tab.active {
+  color: var(--status-info);
+  background: var(--status-info-bg);
+}
+.nav-tab-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 2rem;
+}
+.nav-tab::before { content: "[ "; opacity: 0.5; }
+.nav-tab::after { content: " ]"; opacity: 0.5; }
+
+/* Interactive Alert Feed Items */
+.alert-item-interactive {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.alert-item-interactive:hover {
+  background-color: var(--bg-input) !important;
+}
+.alert-item-interactive.selected {
+  background-color: var(--bg-elevated) !important;
+  border-left: 2px solid currentColor;
+}
