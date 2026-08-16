@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: pench_postgres
+    environment:
+      POSTGRES_USER: pench_user
+      POSTGRES_PASSWORD: pench_password
+      POSTGRES_DB: pench_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pench_user -d pench_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: pench_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DB_HOST=postgres
+      - DB_USER=pench_user
+      - DB_PASSWORD=pench_password
+      - DB_NAME=pench_db
+      - ML_SERVICE_URL=http://ml_server:8000
+      - JWT_SECRET=super_secret_reserve_token
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  ml_server:
+    build: ./ml_server
+    container_name: pench_ml_server
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DB_URL=postgresql://pench_user:pench_password@postgres:5432/pench_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./ml_server:/app
+
+  frontend:
+    build: ./frontend
+    container_name: pench_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:5000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
