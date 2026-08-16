@@ -2,16 +2,25 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');
-
+const stationsRoutes = require('./routes/stations.routes');
+const ingestRoutes = require('./routes/ingest.routes');
+const reviewRoutes = require('./routes/review.routes');
+const tigersRoutes = require('./routes/tigers.routes');
+const capturesRoutes = require('./routes/captures.routes');
 const app = express();
 
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
+app.use('/api/ingest', ingestRoutes);
+app.use('/api/review', reviewRoutes);
+app.use('/api/tigers', tigersRoutes);
+app.use('/api/captures', capturesRoutes);
+
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
-
+app.use('/api/stations', stationsRoutes);
 module.exports = app;
