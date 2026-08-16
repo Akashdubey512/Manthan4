@@ -7,6 +7,10 @@ const ingestRoutes = require('./routes/ingest.routes');
 const reviewRoutes = require('./routes/review.routes');
 const tigersRoutes = require('./routes/tigers.routes');
 const capturesRoutes = require('./routes/captures.routes');
+const occupancyRoutes = require('./routes/occupancy.routes');
+const alertsRoutes = require('./routes/alerts.routes');
+const settingsRoutes = require('./routes/settings.routes');
+const auditRoutes = require('./routes/audit.routes');
 const app = express();
 
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
@@ -17,9 +21,11 @@ app.use('/api/ingest', ingestRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/tigers', tigersRoutes);
 app.use('/api/captures', capturesRoutes);
-
+app.use('/api/occupancy', occupancyRoutes);
+app.use('/api/alerts', alertsRoutes);
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-
+app.use('/api/settings', settingsRoutes);
+app.use('/api/audit', auditRoutes);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
 app.use('/api/stations', stationsRoutes);
