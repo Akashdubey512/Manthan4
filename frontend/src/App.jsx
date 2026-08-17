@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Map as MapIcon, Eye, HardDrive, Camera, 
-  ShieldAlert, Settings, Search, Wifi, Clock, User, X, ChevronRight, ExternalLink, LogOut
+  ShieldAlert, Settings, Search, Wifi, Clock, User, X, ChevronRight, ExternalLink, LogOut, Terminal
 } from 'lucide-react';
 import IntelligenceOverview from './pages/IntelligenceOverview';
 import SpatialView from './pages/SpatialView';
 import TigerRegistry from './pages/TigerRegistry';
 import DataIngest from './pages/DataIngest';
-import LoginScreen from './pages/LoginScreen';
-import { isLoggedIn, getMe, logout, getStats } from './services/api';
+import IntelligenceAssistant from './pages/IntelligenceAssistant';
+import { useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'spatial',  label: 'Map View / Spatial', icon: MapIcon },
   { id: 'registry', label: 'Wildlife / Tiger Registry', icon: Eye },
   { id: 'ingest',   label: 'Data Ingestion', icon: HardDrive },
+  { id: 'ai_assistant', label: 'AI Intelligence', icon: Terminal },
 ];
 
 function useLiveClock() {
@@ -410,44 +413,20 @@ function DrawerRow({ label, value, mono }) {
 
 // ─── Main App Component ───────────────────────────────────────────────────
 export default function App() {
-  const [authenticated, setAuthenticated] = useState(isLoggedIn());
-  const [user, setUser]                   = useState(null);
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedTiger, setSelectedTiger] = useState(null);
+  const [showRegister, setShowRegister]   = useState(false);
   const [telemetryStats, setTelemetryStats] = useState(null);
-
-  useEffect(() => {
-    if (isLoggedIn()) {
-      getMe().then(userData => {
-        if (userData) {
-          setUser(userData);
-          setAuthenticated(true);
-        }
-      });
-      getStats().then(stats => setTelemetryStats(stats));
-    }
-  }, [authenticated]);
 
   // Periodic telemetry refresh
   useEffect(() => {
-    if (!authenticated) return;
+    if (!isAuthenticated) return;
     const interval = setInterval(() => {
-      getStats().then(stats => setTelemetryStats(stats));
+      // getStats().then(stats => setTelemetryStats(stats));
     }, 15000);
     return () => clearInterval(interval);
-  }, [authenticated]);
-
-  const handleLoginSuccess = (userData) => {
-    setUser(userData);
-    setAuthenticated(true);
-    getStats().then(stats => setTelemetryStats(stats));
-  };
-
-  const handleLogout = () => {
-    logout();
-    setUser(null);
-    setAuthenticated(false);
-  };
+  }, [isAuthenticated]);
 
   const handleNavigate = (tab, tiger) => {
     if (tiger !== undefined) setSelectedTiger(tiger);
@@ -458,8 +437,13 @@ export default function App() {
     setActiveTab(tab);
   };
 
-  if (!authenticated) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  if (isLoading) {
+    return <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: 'var(--bg-base)', alignItems: 'center', justifyContent: 'center', color: 'var(--status-normal)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', letterSpacing: '0.1em' }}>INITIALIZING COMMAND CENTER...</div>;
+  }
+
+  if (!isAuthenticated) {
+    if (showRegister) return <Register onSwitchToLogin={() => setShowRegister(false)} />;
+    return <Login onSwitchToRegister={() => setShowRegister(true)} />;
   }
 
   const renderContent = () => {
@@ -490,6 +474,8 @@ export default function App() {
         );
       case 'ingest':
         return <DataIngest />;
+      case 'ai_assistant':
+        return <IntelligenceAssistant />;
       default:
         return <IntelligenceOverview onNavigate={handleNavigate} />;
     }
@@ -502,7 +488,7 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={handleTabChange}
         user={user}
-        onLogout={handleLogout}
+        onLogout={logout}
         telemetryStats={telemetryStats}
       />
 
