@@ -11,15 +11,11 @@
     "@supabase/supabase-js": "^2.112.3",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
-    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.2.0",
-    "pg": "^8.11.3",
-    "pg-hstore": "^2.3.4",
-    "sequelize": "^6.33.0"
+    "multer": "^2.2.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
