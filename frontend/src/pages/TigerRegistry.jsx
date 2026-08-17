@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Eye, TrendingUp, TrendingDown, Minus, ExternalLink, Shield, Filter, Crosshair } from 'lucide-react';
-import { MOCK_TIGERS } from '../services/mockData';
+import { getTigers } from '../services/api';
 
 const STATUS_COLOR = {
   normal:   'var(--status-normal)',
@@ -169,27 +169,36 @@ function SideRow({ label, value, mono }) {
 }
 
 export default function TigerRegistry({ selectedTiger, onSelectTiger, onNavigate }) {
+  const [tigers, setTigers] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
+  useEffect(() => {
+    async function loadTigers() {
+      const data = await getTigers();
+      setTigers(data);
+    }
+    loadTigers();
+  }, []);
+
   const filtered = useMemo(() => {
-    return MOCK_TIGERS.filter(t => {
+    return tigers.filter(t => {
       const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.id.toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === 'all' || t.status === filterStatus;
       return matchSearch && matchStatus;
     });
-  }, [search, filterStatus]);
+  }, [tigers, search, filterStatus]);
 
   const handleSelect = (tiger) => {
     if (selectedTiger?.id === tiger.id) {
-      onSelectTiger(null);
+      if (onSelectTiger) onSelectTiger(null);
     } else {
-      onSelectTiger(tiger);
+      if (onSelectTiger) onSelectTiger(tiger);
     }
   };
 
   const handleViewSpatial = (tiger) => {
-    onNavigate('spatial', tiger);
+    if (onNavigate) onNavigate('spatial', tiger);
   };
 
   return (
@@ -276,4 +285,5 @@ export default function TigerRegistry({ selectedTiger, onSelectTiger, onNavigate
     </div>
   );
 }
+
 

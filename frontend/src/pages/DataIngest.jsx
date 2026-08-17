@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Upload, HardDrive, CheckCircle2, AlertTriangle, Loader, ChevronRight, RefreshCw, Cpu, Database, Play } from 'lucide-react';
-import { MOCK_INGEST_HISTORY } from '../services/mockData';
+import { getIngestHistory } from '../services/api';
 
 // ─── Workflow stages ─────────────────────────────────────────────────────────
 const STAGES = [
@@ -62,6 +62,7 @@ function HistoryRow({ batch }) {
 }
 
 export default function DataIngest() {
+  const [history, setHistory]           = useState([]);
   const [phase, setPhase]               = useState('ready'); // ready | running | done | error
   const [currentStage, setCurrentStage]   = useState(null);
   const [progress, setProgress]         = useState(0);
@@ -69,6 +70,14 @@ export default function DataIngest() {
   const [results, setResults]           = useState(null);
   const fileInputRef                    = useRef();
   const timers                          = useRef([]);
+
+  useEffect(() => {
+    async function loadHistory() {
+      const data = await getIngestHistory();
+      setHistory(data);
+    }
+    loadHistory();
+  }, []);
 
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
 
@@ -273,7 +282,7 @@ export default function DataIngest() {
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_INGEST_HISTORY.map(b => <HistoryRow key={b.id} batch={b} />)}
+                  {history.map(b => <HistoryRow key={b.id} batch={b} />)}
                   {results && (
                     <tr style={{ background: 'rgba(78, 139, 113, 0.08)' }}>
                       <td colSpan={6} style={{ padding: '0.55rem 0.85rem', fontSize: '0.68rem', color: 'var(--status-normal)', fontFamily: 'var(--font-mono)' }}>
@@ -290,4 +299,5 @@ export default function DataIngest() {
     </div>
   );
 }
+
 

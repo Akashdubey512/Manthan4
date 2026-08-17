@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Circle, Polyline, ZoomControl, useMap } from 'react-leaflet';
 import { Layers, Camera, Eye, AlertTriangle, Map as MapIcon, ChevronRight, X, ExternalLink, Sliders, Shield, Radio } from 'lucide-react';
-import { MOCK_TIGERS, MOCK_CAMERAS, MOCK_TRAILS } from '../services/mockData';
+import { getTigers, getCameras, getTrails } from '../services/api';
 import L from 'leaflet';
 
 // ─── Map controllers ────────────────────────────────────────────────────────
 function MapFlyTo({ target }) {
   const map = useMap();
   useEffect(() => {
-    if (target) map.flyTo([target.lat, target.lng], 14, { duration: 0.9, easeLinearity: 0.25 });
+    if (target && target.lat && target.lng) {
+      map.flyTo([target.lat, target.lng], 14.5, { duration: 0.9, easeLinearity: 0.25 });
+    }
   }, [target, map]);
   return null;
 }
@@ -145,10 +147,27 @@ const PENCH_CENTER = [21.725, 79.302];
 const STATUS_COLOR = { normal: '#4E8B71', warning: '#D68A27', critical: '#E54D42', info: '#3182CE', online: '#4E8B71', offline: '#E54D42' };
 
 export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }) {
+  const [tigers, setTigers] = useState([]);
+  const [cameras, setCameras] = useState([]);
+  const [trails, setTrails] = useState({});
   const [activeLayers, setActiveLayers] = useState(new Set(['cameras', 'tigers', 'zones', 'anomalies', 'trails']));
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [entityType, setEntityType] = useState(null);
   const [mapTarget, setMapTarget] = useState(null);
+
+  useEffect(() => {
+    async function loadSpatialData() {
+      const [t, c, tr] = await Promise.all([
+        getTigers(),
+        getCameras(),
+        getTrails(),
+      ]);
+      setTigers(t);
+      setCameras(c);
+      setTrails(tr);
+    }
+    loadSpatialData();
+  }, []);
 
   // Focus entity if passed externally
   useEffect(() => {
@@ -171,7 +190,7 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
     setSelectedEntity(tiger);
     setEntityType('tiger');
     setMapTarget(tiger);
-    onSelectTiger(tiger);
+    if (onSelectTiger) onSelectTiger(tiger);
   }, [onSelectTiger]);
 
   const handleCameraClick = useCallback((cam) => {
@@ -184,7 +203,7 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
     setSelectedEntity(null);
     setEntityType(null);
     setMapTarget(null);
-    onSelectTiger(null);
+    if (onSelectTiger) onSelectTiger(null);
   }, [onSelectTiger]);
 
   return (
@@ -195,33 +214,39 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
           <MapIcon size={14} color="var(--status-normal)" /> Full-Screen GIS Spatial Telemetry
         </span>
         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-          <span>ENTITIES: <strong style={{ color: 'var(--text-primary)' }}>{MOCK_TIGERS.length}</strong> TRACKED</span>
+          <span>ENTITIES: <strong style={{ color: 'var(--text-primary)' }}>{tigers.length}</strong> TRACKED</span>
           <span>|</span>
-          <span>CAMERAS: <strong style={{ color: 'var(--status-normal)' }}>121/124</strong> ACTIVE</span>
+          <span>CAMERAS: <strong style={{ color: 'var(--status-normal)' }}>{cameras.filter(c => c.status === 'online').length}/{cameras.length}</strong> ACTIVE</span>
         </div>
       </div>
 
       {/* Map */}
       <div style={{ flex: 1, position: 'relative' }}>
-        <MapContainer center={PENCH_CENTER} zoom={12} zoomControl={false} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={PENCH_CENTER} zoom={12.5} zoomControl={false} style={{ height: '100%', width: '100%' }}>
           <TileLayer
-            attribution='&copy; <a href="https://carto.com">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            className="gis-satellite-tiles"
+            attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          />
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+            opacity={0.6}
           />
           <ZoomControl position="bottomright" />
           <ScaleControl />
           <MapFlyTo target={mapTarget} />
 
           {/* Home Range Zones */}
-          {activeLayers.has('zones') && MOCK_TIGERS.map(t => (
+          {activeLayers.has('zones') && tigers.map(t => (
             <Circle key={`zone-${t.id}`} center={[t.lat, t.lng]} radius={1500}
               pathOptions={{ color: STATUS_COLOR[t.status], fillColor: STATUS_COLOR[t.status], fillOpacity: 0.07, weight: 1, dashArray: t.status === 'critical' ? '6 4' : t.status === 'warning' ? '4 3' : undefined }}
+              eventHandlers={{ click: () => handleTigerClick(t) }}
             />
           ))}
 
           {/* Movement Trails */}
-          {activeLayers.has('trails') && MOCK_TIGERS.map(t => {
-            const trail = MOCK_TRAILS[t.id];
+          {activeLayers.has('trails') && tigers.map(t => {
+            const trail = trails[t.id];
             if (!trail) return null;
             return (
               <Polyline key={`trail-${t.id}`} positions={trail}
@@ -231,7 +256,7 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
           })}
 
           {/* Tiger markers */}
-          {activeLayers.has('tigers') && MOCK_TIGERS.map(t => {
+          {activeLayers.has('tigers') && tigers.map(t => {
             const isSelected = selectedEntity?.id === t.id;
             const color = STATUS_COLOR[t.status];
             return (
@@ -245,7 +270,7 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
           })}
 
           {/* Camera markers */}
-          {activeLayers.has('cameras') && MOCK_CAMERAS.map(cam => {
+          {activeLayers.has('cameras') && cameras.map(cam => {
             const color = STATUS_COLOR[cam.status];
             const isSelected = selectedEntity?.id === cam.id;
             return (
@@ -265,7 +290,7 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
           entity={selectedEntity}
           type={entityType}
           onClose={handleClose}
-          onViewRegistry={() => { onSelectTiger(selectedEntity); onNavigate('registry'); }}
+          onViewRegistry={() => { if (onSelectTiger) onSelectTiger(selectedEntity); if (onNavigate) onNavigate('registry'); }}
         />
 
         {/* Floating Tactical Legend */}
@@ -288,3 +313,4 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
     </div>
   );
 }
+

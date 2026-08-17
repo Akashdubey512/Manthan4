@@ -157,8 +157,11 @@ html, body {
 
 /* Tactical Leaflet Map Overrides */
 .leaflet-container {
-  background: var(--bg-base) !important;
+  background: #060a0e !important;
   font-family: var(--font-sans);
+}
+.gis-satellite-tiles {
+  filter: brightness(0.7) contrast(1.18) saturate(0.9);
 }
 .leaflet-popup-content-wrapper {
   background: var(--bg-elevated);
