@@ -1,13 +1,58 @@
-# OS files
+# Repository-level ignore for Manthan4
+
+# Python artifacts
+.venv/
+__pycache__/
+*.pyc
+
+# Virtual environment (user-specific)
+# (Keep .venv local and out of git)
+
+# Dataset images — do NOT commit image files
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tif
+*.tiff
+*.webp
+
+# Model weights and binary caches
+*.pt
+*.pth
+*.safetensors
+*.onnx
+*.bin
+*.ckpt
+*.tar.gz
+*.zip
+
+# Torch/ML caches
+.torch_cache/
+.cache/torch/
+torch_cache/
+
+# PytorchWildlife / SpeciesNet caches and weights
+PytorchWildlife/
+speciesnet_cache/
+
+# Tiger crops and generated image outputs
+sample_data/tiger_crops/
+**/tiger_crops/
+
+# Generated evaluation and temporary outputs (explicit patterns)
+sample_data/batch_results.csv
+sample_data/stage_a3_*.csv
+*.eval.csv
+batch_results.csv
+
+# Temp model download artifacts
+MDV6-*.pt*
+
+# Logs and run artifacts
+*.log
+eval_run.log
+
+# Editor / OS files
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-
-# Logs
-*.log
-
-# Environment files
-.env
