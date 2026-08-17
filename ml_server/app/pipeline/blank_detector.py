@@ -1,11 +1,27 @@
-import cv2
+import os
 import numpy as np
 from PIL import Image
+from ..predict import load_model, predict_image, THRESHOLD, IMG_SIZE
+# pyrefly: ignore [missing-import]
+from tensorflow.keras.utils import img_to_array
+
+try:
+    # pyrefly: ignore [missing-import]
+    import cv2
+except ImportError:
+    cv2 = None
+
 
 class BlankDetector:
-    def __init__(self, confidence_threshold=0.3):
-        self.confidence_threshold = confidence_threshold
-        # Pretrained weight paths will be cached local in model_store
+    def __init__(self, threshold=THRESHOLD):
+        self.threshold = threshold
+        try:
+            self.model = load_model()
+            print("[INFO] MobileNetV2 Blank Detector model loaded successfully.")
+        except Exception as e:
+            print(f"[WARN] Could not load model: {e}")
+            self.model = None
+
 
     def frame_difference_check(self, image_path_1, image_path_2, threshold=25):
         """
@@ -27,23 +43,49 @@ class BlankDetector:
         non_zero_ratio = np.sum(thresh == 255) / thresh.size
         return float(non_zero_ratio)
 
-    def detect_subject(self, image_path):
+    def detect_subject(self, image_input):
         """
-        Stub for MegaDetector / motion detector.
+        Detects whether an image contains an animal or is blank.
+        Accepts:
+            image_input: file path (str) OR PIL Image object
         Returns:
-            has_subject: bool
-            confidence: float
-            bbox: list of [ymin, xmin, ymax, xmax]
+            dict with { has_subject: bool, is_blank: bool, blank_confidence: float, animal_confidence: float, prediction: str }
         """
-        # Placeholder for MegaDetector v5/v6 weights inference
-        # In mock mode, we look for non-uniform image statistics
+        if self.model is None:
+            # Fallback if model could not be loaded
+            return {
+                "has_subject": True,
+                "is_blank": False,
+                "blank_confidence": 0.0,
+                "animal_confidence": 1.0,
+                "prediction": "UNKNOWN"
+            }
+
         try:
-            with Image.open(image_path) as img:
-                entropy = img.entropy()
-                # Dummy metric: lower entropy is more likely blank
-                if entropy < 4.0:
-                    return False, 0.15, []
-                else:
-                    return True, 0.85, [0.2, 0.2, 0.8, 0.8]
-        except Exception:
-            return False, 0.0, []
+            if isinstance(image_input, str):
+                label, prob = predict_image(self.model, image_input, threshold=self.threshold)
+            else:
+                img = image_input.convert("RGB").resize((IMG_SIZE, IMG_SIZE))
+                img_array = img_to_array(img) / 255.0
+                img_array = np.expand_dims(img_array, axis=0)
+                prob = float(self.model.predict(img_array, verbose=0)[0][0])
+                label = "BLANK" if prob >= self.threshold else "ANIMAL"
+
+            is_blank = (label == "BLANK")
+            return {
+                "has_subject": not is_blank,
+                "is_blank": is_blank,
+                "blank_confidence": round(prob, 4),
+                "animal_confidence": round(1.0 - prob, 4),
+                "prediction": label
+            }
+        except Exception as e:
+            print(f"Error in detect_subject: {e}")
+            return {
+                "has_subject": False,
+                "is_blank": True,
+                "blank_confidence": 1.0,
+                "animal_confidence": 0.0,
+                "error": str(e)
+            }
+
