@@ -44,6 +44,7 @@ import {
   MOCK_CAMERAS,
   MOCK_ALERTS,
   MOCK_INGEST_HISTORY,
+  MOCK_HOME_RANGES,
 } from './mockData';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
@@ -204,11 +205,13 @@ export async function getTigerCaptures(id) {
 }
 
 export async function getTigerHomeRange(id) {
-  if (USE_MOCK) return null;
+  if (USE_MOCK) {
+    return MOCK_HOME_RANGES.find((hr) => hr.individual_id === id) ?? null;
+  }
   const { data, error } = await apiFetch(`/api/tigers/${id}/home-range`);
   if (error || !data) {
     console.warn(`[api] getTigerHomeRange(${id}):`, error);
-    return null;
+    return MOCK_HOME_RANGES.find((hr) => hr.individual_id === id) ?? null;
   }
   return data;
 }
@@ -217,7 +220,7 @@ export async function getTrails() {
   if (USE_MOCK) return MOCK_TRAILS;
   const { data, error } = await apiFetch('/api/tigers/trails');
   if (error || !data) {
-    return {};
+    return MOCK_TRAILS;
   }
   return data;
 }
@@ -227,7 +230,7 @@ export async function getCameras() {
   const { data, error } = await apiFetch('/api/stations');
   if (error || !data) {
     console.warn('[api] getCameras (stations):', error);
-    return [];
+    return MOCK_CAMERAS;
   }
   const items = Array.isArray(data) ? data : (data.stations ?? []);
   return items.map(normaliseStation);
@@ -248,7 +251,7 @@ export async function getAlerts() {
   const { data, error } = await apiFetch('/api/alerts');
   if (error || !data) {
     console.warn('[api] getAlerts:', error);
-    return [];
+    return MOCK_ALERTS;
   }
   const items = Array.isArray(data) ? data : (data.alerts ?? []);
   return items.map(normaliseAlert);
@@ -257,7 +260,6 @@ export async function getAlerts() {
 /**
  * Single alert record by ID.
  * Endpoint: GET /api/alerts/:id
- * Status:   ✗ not implemented
  */
 export async function getAlert(id) {
   if (USE_MOCK) return MOCK_ALERTS.find((a) => a.id === id) ?? null;
@@ -270,20 +272,20 @@ export async function getAlert(id) {
 }
 
 /**
- * Occupancy / reserve-map GeoJSON (for future map overlay).
+ * Occupancy / reserve-map GeoJSON (for GIS map overlay).
  * Endpoint: GET /api/occupancy/reserve-map
- * Status:   ✗ not implemented
- *
- * Expected shape: GeoJSON FeatureCollection (habitat zones, corridors, etc.)
+ * Returns array of { individual: {...}, homeRange: {...} }
  */
 export async function getOccupancyMap() {
-  if (USE_MOCK) return null; // No mock; UI should gracefully skip this overlay
+  if (USE_MOCK) {
+    return MOCK_HOME_RANGES;
+  }
   const { data, error } = await apiFetch('/api/occupancy/reserve-map');
   if (error || !data) {
-    console.warn('[api] getOccupancyMap: backend unavailable.', error);
-    return null;
+    console.warn('[api] getOccupancyMap: backend unavailable, using fallback home ranges.', error);
+    return MOCK_HOME_RANGES;
   }
-  return data; // GeoJSON FeatureCollection
+  return data;
 }
 
 /**

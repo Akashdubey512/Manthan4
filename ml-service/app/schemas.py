@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, List, Tuple, Dict, Any, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -313,3 +313,87 @@ class IdentificationResult(TigerCropResult):
         },
         description="Version strings for each model used in inference",
     )
+
+
+# ---------------------------------------------------------------------------
+# Stage 5 — Occupancy & Home Range Schemas (Phase 3)
+# ---------------------------------------------------------------------------
+
+class HomeRangeMethod(str, Enum):
+    MCP = "MCP"
+    KDE = "KDE"
+    BOTH = "BOTH"
+
+
+class GPSCoordinate(BaseModel):
+    lat: float = Field(..., ge=-90.0, le=90.0, description="Latitude in decimal degrees")
+    lng: float = Field(..., ge=-180.0, le=180.0, description="Longitude in decimal degrees")
+
+
+class HomeRangeRequest(BaseModel):
+    individual_id: str = Field(..., description="Unique identifier for the tiger/individual")
+    points: List[Union[Tuple[float, float], List[float], GPSCoordinate]] = Field(
+        ..., description="List of (lat, lng) points from capture locations"
+    )
+    method: HomeRangeMethod = Field(HomeRangeMethod.BOTH, description="MCP, KDE, or BOTH")
+    metric_crs: str = Field("EPSG:32644", description="Target metric CRS (default UTM Zone 44N)")
+    fallback_buffer_meters: float = Field(0.0, description="Visualization buffer in meters for sparse points")
+
+
+class SingleHomeRangeOutput(BaseModel):
+    method: str
+    status: str
+    area_sq_km: float
+    centroid: Optional[Dict[str, float]] = None
+    geojson: Optional[Dict[str, Any]] = None
+    points_count: int = 0
+    notes: Optional[str] = None
+
+
+class KDEIsoplethOutput(BaseModel):
+    percentile: float
+    status: str
+    area_sq_km: float
+    centroid: Optional[Dict[str, float]] = None
+    geojson: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = None
+
+
+class HomeRangeResponse(BaseModel):
+    individual_id: str
+    method: str
+    status: str
+    area_sq_km: Optional[float] = None
+    centroid: Optional[Dict[str, float]] = None
+    geojson: Optional[Dict[str, Any]] = None
+    points_count: int = 0
+    mcp: Optional[SingleHomeRangeOutput] = None
+    kde_95: Optional[KDEIsoplethOutput] = None
+    kde_50: Optional[KDEIsoplethOutput] = None
+    notes: Optional[str] = None
+
+
+class BatchHomeRangeRequest(BaseModel):
+    items: List[HomeRangeRequest]
+
+
+class OverlapRequest(BaseModel):
+    individual_a_id: str = Field(..., description="First tiger ID")
+    individual_b_id: str = Field(..., description="Second tiger ID")
+    geom_a: Dict[str, Any] = Field(..., description="GeoJSON polygon geometry for Individual A")
+    geom_b: Dict[str, Any] = Field(..., description="GeoJSON polygon geometry for Individual B")
+    metric_crs: str = Field("EPSG:32644", description="Metric CRS for area calculations")
+
+
+class OverlapResponse(BaseModel):
+    individual_a_id: str
+    individual_b_id: str
+    status: str
+    area_a_sq_km: float
+    area_b_sq_km: float
+    overlap_area_sq_km: float
+    overlap_pct_a: float
+    overlap_pct_b: float
+    intersection_geojson: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = None
+

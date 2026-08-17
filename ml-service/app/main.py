@@ -28,5 +28,7 @@ def read_root():
 def health_check():
     return {"status": "healthy"}
 
-from app.routers import ingest
+from app.routers import ingest, geo
 app.include_router(ingest.router, prefix="/api", tags=["ingest"])
+app.include_router(geo.router, prefix="/api", tags=["geo"])
+

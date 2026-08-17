@@ -15,3 +15,5 @@ torch
 torchvision
 PytorchWildlife
 speciesnet
+pyproj
+
