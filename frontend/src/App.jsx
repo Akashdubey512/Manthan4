@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Map as MapIcon, Eye, HardDrive, Camera, 
-  ShieldAlert, Settings, Search, Wifi, Clock, User, X, ChevronRight, ExternalLink
+  ShieldAlert, Settings, Search, Wifi, Clock, User, X, ChevronRight, ExternalLink, LogOut, Terminal
 } from 'lucide-react';
 import IntelligenceOverview from './pages/IntelligenceOverview';
 import SpatialView from './pages/SpatialView';
 import TigerRegistry from './pages/TigerRegistry';
 import DataIngest from './pages/DataIngest';
+import IntelligenceAssistant from './pages/IntelligenceAssistant';
+import { useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'spatial',  label: 'Map View / Spatial', icon: MapIcon },
   { id: 'registry', label: 'Wildlife / Tiger Registry', icon: Eye },
   { id: 'ingest',   label: 'Data Ingestion', icon: HardDrive },
+  { id: 'ai_assistant', label: 'AI Intelligence', icon: Terminal },
 ];
 
 function useLiveClock() {
@@ -27,6 +32,7 @@ function useLiveClock() {
 
 // ─── Left Operational Sidebar ──────────────────────────────────────────────
 function LeftSidebar({ activeTab, onTabChange }) {
+  const { user, logout } = useAuth();
   return (
     <aside style={{
       width: '230px',
@@ -120,14 +126,33 @@ function LeftSidebar({ activeTab, onTabChange }) {
         flexDirection: 'column',
         gap: '0.4rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <User size={13} color="var(--text-secondary)" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <User size={13} color="var(--text-secondary)" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                {user?.name || 'Operator'}
+              </div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+                {user?.role?.replace('_', ' ') || 'FIELD OFFICER'}
+              </div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-primary)' }}>Op. Y. Sharma</div>
-            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>FIELD OFFICER · ZONE A</div>
-          </div>
+          <button 
+            onClick={logout}
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem',
+              borderRadius: 'var(--radius-sm)', transition: 'all 0.15s ease'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.color = 'var(--status-critical)'; e.currentTarget.style.background = 'var(--status-critical-bg)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'none'; }}
+            title="Secure Logout"
+          >
+            <LogOut size={14} />
+          </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.2rem', fontSize: '0.62rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--status-normal)' }}>
@@ -392,8 +417,21 @@ function DrawerRow({ label, value, mono }) {
 
 // ─── Main App Component ───────────────────────────────────────────────────
 export default function App() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedTiger, setSelectedTiger] = useState(null);
+  const [showRegister, setShowRegister] = useState(false);
+
+  if (isLoading) {
+    return <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: 'var(--bg-base)', alignItems: 'center', justifyContent: 'center', color: 'var(--status-normal)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', letterSpacing: '0.1em' }}>INITIALIZING COMMAND CENTER...</div>;
+  }
+
+  if (!isAuthenticated) {
+    if (showRegister) {
+      return <Register onSwitchToLogin={() => setShowRegister(false)} />;
+    }
+    return <Login onSwitchToRegister={() => setShowRegister(true)} />;
+  }
 
   const handleNavigate = (tab, tiger) => {
     if (tiger !== undefined) setSelectedTiger(tiger);
@@ -432,6 +470,8 @@ export default function App() {
         );
       case 'ingest':
         return <DataIngest />;
+      case 'ai_assistant':
+        return <IntelligenceAssistant />;
       default:
         return <IntelligenceOverview onNavigate={handleNavigate} />;
     }

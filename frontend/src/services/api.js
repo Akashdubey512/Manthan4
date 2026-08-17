@@ -57,12 +57,21 @@ const USE_MOCK = !API_BASE; // true when running without a real backend
  */
 async function apiFetch(path) {
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      headers: { Accept: 'application/json' },
-    });
+    const headers = { Accept: 'application/json' };
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}${path}`, { headers });
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      return { data: null, error: `HTTP ${res.status}: ${text || res.statusText}` };
+      let errorMsg = `HTTP ${res.status}: ${text || res.statusText}`;
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.error) errorMsg = parsed.error;
+      } catch (e) {}
+      return { data: null, error: errorMsg };
     }
     const data = await res.json();
     return { data, error: null };
