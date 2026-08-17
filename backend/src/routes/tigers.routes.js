@@ -7,6 +7,7 @@ const requireRole = require('../middleware/requireRole');
 const router = express.Router();
 
 router.get('/', requireAuth, tigersController.listTigers);
+router.get('/trails', requireAuth, tigersController.getTrails);
 router.get('/:id', requireAuth, tigersController.getTiger);
 router.get('/:id/captures', requireAuth, tigersController.getTigerCaptures);
 router.get('/:id/home-range', requireAuth, tigersController.getTigerHomeRange);

@@ -38,7 +38,7 @@ def resolve_model_path():
 
 MODEL_PATH = resolve_model_path()
 IMG_SIZE = 224
-THRESHOLD = 0.45  # prob >= threshold -> BLANK, else ANIMAL
+THRESHOLD = 0.35  # prob >= threshold -> BLANK, else ANIMAL
 
 # class_indices from training: {'animal': 0, 'blank': 1}
 # so sigmoid output close to 1 = blank, close to 0 = animal

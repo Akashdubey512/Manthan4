@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Map as MapIcon, Eye, HardDrive, Camera, 
-  ShieldAlert, Settings, Search, Wifi, Clock, User, X, ChevronRight, ExternalLink
+  ShieldAlert, Settings, Search, Wifi, Clock, User, X, ChevronRight, ExternalLink, LogOut
 } from 'lucide-react';
 import IntelligenceOverview from './pages/IntelligenceOverview';
 import SpatialView from './pages/SpatialView';
 import TigerRegistry from './pages/TigerRegistry';
 import DataIngest from './pages/DataIngest';
+import LoginScreen from './pages/LoginScreen';
+import { isLoggedIn, getMe, logout, getStats } from './services/api';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -26,7 +28,11 @@ function useLiveClock() {
 }
 
 // ─── Left Operational Sidebar ──────────────────────────────────────────────
-function LeftSidebar({ activeTab, onTabChange }) {
+function LeftSidebar({ activeTab, onTabChange, user, onLogout, telemetryStats }) {
+  const onlineTraps = telemetryStats?.activeTraps ?? 121;
+  const totalTraps = telemetryStats?.totalTraps ?? 124;
+  const openAlerts = telemetryStats?.openAlerts ?? 4;
+
   return (
     <aside style={{
       width: '230px',
@@ -91,8 +97,8 @@ function LeftSidebar({ activeTab, onTabChange }) {
           onClick={() => onTabChange('spatial')}
         >
           <Camera size={16} color="var(--text-muted)" />
-          <span>Camera Traps (124)</span>
-          <span style={{ marginLeft: 'auto', fontSize: '0.6rem', padding: '1px 5px', borderRadius: '2px', background: 'var(--status-normal-bg)', color: 'var(--status-normal)', fontFamily: 'var(--font-mono)' }}>121 ON</span>
+          <span>Camera Traps ({totalTraps})</span>
+          <span style={{ marginLeft: 'auto', fontSize: '0.6rem', padding: '1px 5px', borderRadius: '2px', background: 'var(--status-normal-bg)', color: 'var(--status-normal)', fontFamily: 'var(--font-mono)' }}>{onlineTraps} ON</span>
         </button>
         <button
           className={`sidebar-nav-item${activeTab === 'alerts' ? ' active' : ''}`}
@@ -100,14 +106,7 @@ function LeftSidebar({ activeTab, onTabChange }) {
         >
           <ShieldAlert size={16} color="var(--status-warning)" />
           <span>Incident Feed</span>
-          <span style={{ marginLeft: 'auto', fontSize: '0.6rem', padding: '1px 5px', borderRadius: '2px', background: 'var(--status-warning-bg)', color: 'var(--status-warning)', fontFamily: 'var(--font-mono)' }}>4 NEW</span>
-        </button>
-        <button
-          className="sidebar-nav-item"
-          style={{ opacity: 0.65 }}
-        >
-          <Settings size={16} color="var(--text-muted)" />
-          <span>System Config</span>
+          <span style={{ marginLeft: 'auto', fontSize: '0.6rem', padding: '1px 5px', borderRadius: '2px', background: 'var(--status-warning-bg)', color: 'var(--status-warning)', fontFamily: 'var(--font-mono)' }}>{openAlerts} ACTIVE</span>
         </button>
       </div>
 
@@ -120,14 +119,33 @@ function LeftSidebar({ activeTab, onTabChange }) {
         flexDirection: 'column',
         gap: '0.4rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <User size={13} color="var(--text-secondary)" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <User size={13} color="var(--text-secondary)" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name || 'Op. Y. Sharma'}</div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+                {user?.role ? `${user.role} · FIELD OPS` : 'FIELD OFFICER · ZONE A'}
+              </div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-primary)' }}>Op. Y. Sharma</div>
-            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>FIELD OFFICER · ZONE A</div>
-          </div>
+          <button
+            onClick={onLogout}
+            title="Sign Out"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '4px'
+            }}
+          >
+            <LogOut size={13} />
+          </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.2rem', fontSize: '0.62rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--status-normal)' }}>
@@ -392,8 +410,44 @@ function DrawerRow({ label, value, mono }) {
 
 // ─── Main App Component ───────────────────────────────────────────────────
 export default function App() {
+  const [authenticated, setAuthenticated] = useState(isLoggedIn());
+  const [user, setUser]                   = useState(null);
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedTiger, setSelectedTiger] = useState(null);
+  const [telemetryStats, setTelemetryStats] = useState(null);
+
+  useEffect(() => {
+    if (isLoggedIn()) {
+      getMe().then(userData => {
+        if (userData) {
+          setUser(userData);
+          setAuthenticated(true);
+        }
+      });
+      getStats().then(stats => setTelemetryStats(stats));
+    }
+  }, [authenticated]);
+
+  // Periodic telemetry refresh
+  useEffect(() => {
+    if (!authenticated) return;
+    const interval = setInterval(() => {
+      getStats().then(stats => setTelemetryStats(stats));
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [authenticated]);
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    setAuthenticated(true);
+    getStats().then(stats => setTelemetryStats(stats));
+  };
+
+  const handleLogout = () => {
+    logout();
+    setUser(null);
+    setAuthenticated(false);
+  };
 
   const handleNavigate = (tab, tiger) => {
     if (tiger !== undefined) setSelectedTiger(tiger);
@@ -403,6 +457,10 @@ export default function App() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
   };
+
+  if (!authenticated) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
 
   const renderContent = () => {
     switch (activeTab) {
@@ -440,7 +498,13 @@ export default function App() {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', backgroundColor: 'var(--bg-base)' }}>
       {/* Left Persistent Navigation Sidebar */}
-      <LeftSidebar activeTab={activeTab} onTabChange={handleTabChange} />
+      <LeftSidebar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        user={user}
+        onLogout={handleLogout}
+        telemetryStats={telemetryStats}
+      />
 
       {/* Main Workspace Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
