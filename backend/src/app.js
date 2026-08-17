@@ -11,7 +11,7 @@ const occupancyRoutes = require('./routes/occupancy.routes');
 const alertsRoutes = require('./routes/alerts.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const auditRoutes = require('./routes/audit.routes');
-const { supabase } = require('./config/supabaseClient');
+const chatRoutes = require('./routes/chat.routes');
 const app = express();
 
 const allowedOrigins = [
@@ -87,6 +87,7 @@ app.get('/api/stats', async (req, res) => {
 app.use('/api/settings', settingsRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/stations', stationsRoutes);
+app.use('/api/chat', chatRoutes);
 const PORT = process.env.PORT || 5000;
 if (require.main === module) {
   app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
