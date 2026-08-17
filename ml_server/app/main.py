@@ -9,10 +9,12 @@ from pydantic import BaseModel
 from PIL import Image
 
 from .pipeline.blank_detector import BlankDetector
+from .pipeline.tiger_identifier import TigerIdentifier
+from fastapi import Form
 
 app = FastAPI(
-    title="Pench Tiger Triage ML Service",
-    description="Offline CPU-friendly Computer Vision and Geospatial Intelligence Service",
+    title="Pench Tiger Triage & Re-ID ML Service",
+    description="Offline CPU-friendly Computer Vision and Tiger Re-Identification Service",
     version="1.0.0"
 )
 
@@ -26,8 +28,9 @@ app.add_middleware(
 
 from fastapi.openapi.utils import get_openapi
 
-# Initialize blank detector singleton
+# Initialize model singletons
 detector = BlankDetector()
+identifier = TigerIdentifier(threshold=0.60)
 
 class IngestRequest(BaseModel):
     run_id: str
@@ -38,8 +41,10 @@ class IngestRequest(BaseModel):
 def read_root():
     return {
         "status": "online",
-        "service": "Pench Tiger Triage ML Service",
-        "model_loaded": detector.model is not None,
+        "service": "Pench Tiger Triage & Re-ID ML Service",
+        "blank_model_loaded": detector.model is not None,
+        "reid_model_loaded": identifier.feature_model is not None,
+        "enrolled_tigers": len(identifier.tiger_embeddings),
         "timestamp": time.time()
     }
 
@@ -48,9 +53,15 @@ def read_root():
 def health_check():
     return {
         "status": "healthy",
-        "model_loaded": detector.model is not None
+        "blank_model_loaded": detector.model is not None,
+        "reid_model_loaded": identifier.feature_model is not None,
+        "enrolled_tigers": len(identifier.tiger_embeddings)
     }
 
+
+# ===============================================================
+# BLANK / ANIMAL CLASSIFICATION
+# ===============================================================
 
 @app.post("/predict/blank")
 async def predict_single_image(file: UploadFile = File(..., description="Select a single image file")):
@@ -98,10 +109,63 @@ async def predict_batch_images(files: List[UploadFile] = File(..., description="
     }
 
 
+# ===============================================================
+# INDIVIDUAL TIGER IDENTIFICATION & RE-ID
+# ===============================================================
+
+@app.post("/identify/tiger")
+async def identify_tiger_image(
+    file: UploadFile = File(..., description="Upload a photo containing a tiger"),
+    threshold: Optional[float] = None
+):
+    """
+    Extracts MobileNetV2 embedding and matches against known tiger catalogue.
+    Returns matched tiger ID or registers a new tiger if similarity < threshold.
+    """
+    try:
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents))
+        result = identifier.identify(image, threshold=threshold)
+        result["filename"] = file.filename
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to identify tiger: {str(e)}")
+
+
+@app.post("/identify/enroll")
+async def enroll_tiger_image(
+    file: UploadFile = File(..., description="Tiger image for enrollment"),
+    tiger_id: str = Form(..., description="Tiger Tag or Identifier (e.g. T-045, Tiger_001)")
+):
+    """
+    Manually enroll a reference image for a specific tiger tag.
+    """
+    try:
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents))
+        result = identifier.enroll_tiger(image, tiger_id=tiger_id)
+        result["filename"] = file.filename
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to enroll tiger: {str(e)}")
+
+
+@app.get("/identify/tigers")
+def list_known_tigers():
+    """
+    Returns list of all enrolled tigers and count of reference embeddings in memory.
+    """
+    return identifier.list_known_tigers()
+
+
+# ===============================================================
+# END-TO-END PIPELINE (BLANK FILTER -> TIGER RE-ID)
+# ===============================================================
+
 @app.post("/predict/zip")
 async def predict_zip_archive(archive: UploadFile = File(..., description="Upload a .zip file of camera trap images")):
     """
-    Extracts all images from a .zip archive and classifies each into ANIMAL or BLANK.
+    Full pipeline: Extracts zip, filters BLANK images, and runs Tiger Re-ID on ANIMAL sightings.
     """
     if not archive.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only .zip files are accepted")
@@ -115,8 +179,19 @@ async def predict_zip_archive(archive: UploadFile = File(..., description="Uploa
                     with z.open(filename) as img_file:
                         try:
                             image = Image.open(io.BytesIO(img_file.read()))
+                            # Step 1: Blank Detection
                             res = detector.detect_subject(image)
                             res["filename"] = filename
+
+                            # Step 2: If Animal detected, run Tiger Re-ID
+                            if res.get("has_subject"):
+                                tiger_res = identifier.identify(image)
+                                res["tiger_id"] = tiger_res.get("tiger_id")
+                                res["tiger_similarity"] = tiger_res.get("similarity")
+                                res["tiger_status"] = tiger_res.get("status")
+                            else:
+                                res["tiger_id"] = None
+
                             results.append(res)
                         except Exception as img_err:
                             results.append({
@@ -129,11 +204,14 @@ async def predict_zip_archive(archive: UploadFile = File(..., description="Uploa
 
     blanks = sum(1 for r in results if r.get("is_blank"))
     animals = sum(1 for r in results if r.get("has_subject"))
+    unique_tigers = len(set(r["tiger_id"] for r in results if r.get("tiger_id")))
+
     return {
         "archive_name": archive.filename,
         "total_images": len(results),
         "blanks_count": blanks,
         "animals_count": animals,
+        "unique_tigers_identified": unique_tigers,
         "blank_ratio": round(blanks / max(1, len(results)), 4),
         "results": results
     }
@@ -181,5 +259,6 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
 
 
