@@ -10,12 +10,23 @@ async function startIngest(runId, storagePath) {
     return simulateRun(runId);
   }
 
-  // Real call, once the Python FastAPI service exists:
-  const res = await axios.post(`${ML_SERVICE_URL}/ingest/start`, {
-    run_id: runId,
-    storage_path: storagePath,
-  });
-  return res.data;
+  try {
+    console.log(`📡 Dispatching ingest job to ML Service (${ML_SERVICE_URL}/ingest/start)...`);
+    const res = await axios.post(`${ML_SERVICE_URL}/ingest/start`, {
+      run_id: runId,
+      storage_path: storagePath,
+    });
+    console.log(`✅ ML Service accepted ingest run ${runId}:`, res.data);
+    return res.data;
+  } catch (err) {
+    console.error(`❌ Failed to connect to ML Service at ${ML_SERVICE_URL}:`, err.message);
+    // Mark run as failed in database if ML service could not be reached
+    await supabase
+      .from('runs')
+      .update({ status: 'failed', notes: `ML service error: ${err.message}` })
+      .eq('id', runId);
+    throw err;
+  }
 }
 
 // TEMPORARY: lets you test the whole app end-to-end before the ML service is built.
