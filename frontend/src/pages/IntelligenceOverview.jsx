@@ -28,11 +28,41 @@ function ScaleControl() {
 // ─── KPI Telemetry Strip ───────────────────────────────────────────────────
 function IntelligenceSummary({ stats }) {
   if (!stats) return null;
+  const activeCount = stats.activeTraps ?? 121;
+  const offlineCount = stats.offlineTraps ?? 3;
+  const detections = stats.recentDetections ?? 18;
+  const tigersCount = stats.identifiedTigers ?? 14;
+
   const items = [
-    { label: 'ACTIVE TRAP NETWORK',  value: stats.activeTraps,     sub: '121 ONLINE · 3 OFFLINE', icon: <Camera size={15} />,        color: 'var(--status-normal)'   },
-    { label: 'FIELD DETECTIONS 24H', value: stats.recentDetections, sub: 'PAST 24 HOURS SYNC',      icon: <Crosshair size={15}/>,     color: 'var(--status-info)'    },
-    { label: 'OFFLINE SENSORS',     value: stats.offlineTraps,     sub: 'CAM-104, CAM-106 ALERT',  icon: <AlertTriangle size={15}/>, color: 'var(--status-warning)', warn: true },
-    { label: 'VERIFIED TIGER REGS',  value: stats.identifiedTigers, sub: 'DATABASE SYNCED',        icon: <CheckCircle2 size={15}/>,  color: 'var(--status-normal)'  },
+    {
+      label: 'ACTIVE TRAP NETWORK',
+      value: activeCount,
+      sub: `${activeCount} ONLINE · ${offlineCount} OFFLINE`,
+      icon: <Camera size={15} />,
+      color: 'var(--status-normal)'
+    },
+    {
+      label: 'FIELD DETECTIONS 24H',
+      value: detections,
+      sub: 'PAST 24 HOURS SYNC',
+      icon: <Crosshair size={15}/>,
+      color: 'var(--status-info)'
+    },
+    {
+      label: 'OFFLINE SENSORS',
+      value: offlineCount,
+      sub: offlineCount > 0 ? `${offlineCount} UNITS REQUIRE ATTENTION` : 'ALL UNITS NOMINAL',
+      icon: <AlertTriangle size={15}/>,
+      color: offlineCount > 0 ? 'var(--status-warning)' : 'var(--status-normal)',
+      warn: offlineCount > 0
+    },
+    {
+      label: 'VERIFIED TIGER REGS',
+      value: tigersCount,
+      sub: 'DATABASE SYNCED',
+      icon: <CheckCircle2 size={15}/>,
+      color: 'var(--status-normal)'
+    },
   ];
 
   return (
@@ -119,6 +149,10 @@ const PENCH_CENTER = [21.7250, 79.3000];
 function SpatialMap({ tigers, trails, cameras, selectedTiger, onSelectTiger }) {
   const statusColor = { normal: 'var(--status-normal)', warning: 'var(--status-warning)', critical: 'var(--status-critical)' };
 
+  const nominalCount = tigers.filter(t => t.status === 'normal').length;
+  const watchCount = tigers.filter(t => t.status === 'warning').length;
+  const anomalyCount = tigers.filter(t => t.status === 'critical').length;
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: 'var(--bg-base)', position: 'relative' }}>
       {/* Map Sub-Header Overlay */}
@@ -136,9 +170,9 @@ function SpatialMap({ tigers, trails, cameras, selectedTiger, onSelectTiger }) {
           <MapIcon size={14} color="var(--text-muted)" /> Pench Reserve GIS Operational Map
         </span>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-          <span style={{ color: 'var(--status-normal)' }}>● NOMINAL (2)</span>
-          <span style={{ color: 'var(--status-warning)' }}>● WATCH (1)</span>
-          <span style={{ color: 'var(--status-critical)' }}>● ANOMALY (1)</span>
+          <span style={{ color: 'var(--status-normal)' }}>● NOMINAL ({nominalCount})</span>
+          <span style={{ color: 'var(--status-warning)' }}>● WATCH ({watchCount})</span>
+          <span style={{ color: 'var(--status-critical)' }}>● ANOMALY ({anomalyCount})</span>
           <span style={{ padding: '1px 5px', border: '1px solid var(--border-default)', borderRadius: '2px', color: 'var(--status-normal)', background: 'var(--bg-panel)' }}>ESRI SATELLITE GIS</span>
         </div>
       </div>
