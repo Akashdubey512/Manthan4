@@ -26,7 +26,7 @@ app.use('/api/alerts', alertsRoutes);
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/api/settings', settingsRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/stations', stationsRoutes);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
-app.use('/api/stations', stationsRoutes);
 module.exports = app;
