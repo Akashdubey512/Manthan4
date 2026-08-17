@@ -166,6 +166,11 @@ function normaliseTiger(raw, idx = 0) {
   if (isNaN(rawLat) || rawLat === 0) rawLat = fallback.lat || (21.720 + (idx * 0.005));
   if (isNaN(rawLng) || rawLng === 0) rawLng = fallback.lng || (79.290 + (idx * 0.008));
 
+  // stripe_match_confidence: backend now returns it as integer (0-100)
+  // If it's a decimal fraction (0-1), scale it up
+  let stripeConf = raw.stripe_match_confidence ?? raw.stripeMatchConfidence ?? fallback.conf ?? 94;
+  if (stripeConf > 0 && stripeConf <= 1) stripeConf = Math.round(stripeConf * 100);
+
   return {
     id: raw.tag ?? raw.id ?? `PT-0${idx + 1}`,
     dbId: raw.id,
@@ -175,8 +180,8 @@ function normaliseTiger(raw, idx = 0) {
     status: raw.status ?? fallback.status ?? (idx % 3 === 2 ? 'warning' : idx % 4 === 3 ? 'critical' : 'normal'),
     zone: raw.zone ?? raw.zone_type ?? fallback.zone ?? 'Core Reserve',
     sex: raw.sex ? (raw.sex.charAt(0).toUpperCase() + raw.sex.slice(1)) : 'Unknown',
-    ageClass: raw.age_class ?? raw.ageClass ?? 'Adult',
-    stripeMatchConfidence: raw.stripe_match_confidence ?? raw.stripeMatchConfidence ?? fallback.conf ?? 94,
+    ageClass: raw.age_class ?? raw.ageClass ?? raw.age ?? 'Adult',
+    stripeMatchConfidence: stripeConf,
     movementTrend: raw.movement_trend ?? raw.movementTrend ?? fallback.trend ?? 'stable',
     homeRangeKm2: raw.home_range_km2 ?? raw.homeRangeKm2 ?? (30 + idx * 8),
     sightings: raw.sightings ?? fallback.sightings ?? (20 + idx * 7),
@@ -356,6 +361,7 @@ export async function getTigers() {
     return MOCK_TIGERS;
   }
   const items = Array.isArray(data) ? data : (data.tigers ?? []);
+  // Use real data if available, fall back to mock only on complete failure
   return items.length > 0 ? items.map((t, idx) => normaliseTiger(t, idx)) : MOCK_TIGERS;
 }
 

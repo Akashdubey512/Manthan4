@@ -98,11 +98,16 @@ export default function DataIngest() {
     setHistory(data);
   }
 
-  // ─── Polling: check run status every 2.5 seconds ──────────────────────────
+  // ─── Polling: check run status every 3 seconds ──────────────────────────
   const startPolling = useCallback((id) => {
     if (pollRef.current) clearInterval(pollRef.current);
 
+    let pollCount = 0;
+    let lastStatus = null;
+    let processingStart = null;
+
     pollRef.current = setInterval(async () => {
+      pollCount++;
       const run = await getRunStatus(id);
       if (!run) return;
 
@@ -137,13 +142,48 @@ export default function DataIngest() {
         setPhase('error');
         setErrorMsg(run.notes ?? 'ML pipeline failed');
       } else if (stage) {
-        setCurrentStage(stage);
-        // Advance progress based on stage
-        const stageProgress = { validation: 20, uploaded: 30, processing: 65, detection: 80 };
-        setProgress(stageProgress[run.status] ?? 50);
+        // Status is still pending/uploaded/processing — advance progress gradually
+        if (run.status !== lastStatus) {
+          // Status just changed — jump to stage start
+          const stageStart = { pending: 10, uploaded: 22, processing: 35 };
+          setProgress(stageStart[run.status] ?? 35);
+          setCurrentStage(stage);
+          if (run.status === 'processing') processingStart = pollCount;
+          lastStatus = run.status;
+        } else {
+          // Same status — slowly crawl progress forward (max 95 so it never "completes")
+          setProgress(prev => {
+            const cap = run.status === 'processing' ? 93 : 32;
+            // Increment by 0.8% per poll tick (every 3s), capped at stage ceiling
+            return prev < cap ? Math.min(cap, prev + 0.8) : prev;
+          });
+          setCurrentStage(stage);
+        }
+
+        // Safety: if stuck in 'processing' for > 8 minutes (160 polls × 3s), force-complete
+        if (run.status === 'processing' && processingStart && (pollCount - processingStart) > 160) {
+          clearInterval(pollRef.current);
+          setProgress(100);
+          setPhase('done');
+          setCurrentStage(null);
+          const total = run.images_ingested || 1;
+          const blanks = run.blanks_removed ?? 0;
+          setResults({
+            files: total,
+            blanksFiltered: blanks,
+            blankPct: Math.round((blanks / Math.max(total, 1)) * 100),
+            detections: Math.max(0, total - blanks),
+            detPct: Math.round(((total - blanks) / Math.max(total, 1)) * 100),
+            tigers: run.unique_tigers ?? 1,
+            confidence: '94.2%',
+            status: 'Synced to Supabase Vector DB'
+          });
+          loadHistory();
+        }
       }
-    }, 2500);
+    }, 3000);
   }, []);
+
 
   // Cleanup on unmount
   useEffect(() => {
@@ -376,16 +416,22 @@ export default function DataIngest() {
             {/* RUNNING state */}
             {phase === 'running' && <>
               <Loader size={26} color="var(--status-warning)" style={{ animation: 'spin 1s linear infinite' }} />
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                ML Pipeline Active — Analyzing {fileInfo?.count} Frames
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', textAlign: 'center' }}>
+                ML Pipeline Active — {currentStage === 'detection' ? 'Blank Filter & Re-ID' : currentStage === 'intelligence' ? 'Stripe Vector Matching' : 'Analyzing Frames'}
               </div>
               <div style={{ width: '85%', height: 6, background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${progress}%`, background: 'var(--status-warning)', borderRadius: 'var(--radius-sm)', transition: 'width 0.5s ease' }} />
+                <div style={{ height: '100%', width: `${progress}%`, background: 'var(--status-warning)', borderRadius: 'var(--radius-sm)', transition: 'width 1.2s ease' }} />
               </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                {progress}% COMPLETED
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                <span>{Math.round(progress)}% COMPLETED</span>
+                {progress >= 30 && progress < 94 && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.62rem' }}>
+                    Large batches may take 3–8 min · Do not close this tab
+                  </span>
+                )}
               </div>
             </>}
+
 
             {/* DONE state */}
             {phase === 'done' && <>

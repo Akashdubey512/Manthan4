@@ -320,7 +320,10 @@ def process_ingest_pipeline(run_id: str, storage_path: Optional[str]):
         unique_tigers_set = set()
 
         station_uuid = db.get_first_station_id()
-        default_ind_uuid = db.get_first_individual_id()
+
+        # Cache: ML tiger tag (e.g. "Tiger_001") → individuals table UUID
+        # Avoids redundant DB lookups for tigers seen multiple times in same batch
+        tiger_tag_to_uuid: dict = {}
 
         for img_path in image_files:
             fname = os.path.basename(img_path)
@@ -328,7 +331,8 @@ def process_ingest_pipeline(run_id: str, storage_path: Optional[str]):
                 with Image.open(img_path) as img:
                     res = blank_detector.detect_subject(img)
                     is_blank = res.get("is_blank", False)
-                    conf = res.get("confidence", 0.95)
+                    blank_conf = res.get("blank_confidence", 0.5)
+                    animal_conf = res.get("animal_confidence", 0.5)
 
                     if is_blank:
                         blanks_count += 1
@@ -344,27 +348,41 @@ def process_ingest_pipeline(run_id: str, storage_path: Optional[str]):
                         "run_id": run_id,
                         "filepath": fname,
                         "status": "quarantined" if is_blank else "kept",
-                        "blank_confidence": conf,
+                        "classification": "blank" if is_blank else "animal",
+                        "blank_confidence": blank_conf,
                         "exif_timestamp": iso_time,
                         "hash": meta.get("file_hash", ""),
                         "station_id": station_uuid
                     })
                     image_uuid = raw_row.get("id") if raw_row else None
 
-                    # If animal detected, run Tiger Re-ID and write capture record
+                    # If animal detected, run Tiger Re-ID
                     if not is_blank:
                         tiger_res = tiger_identifier.identify(img)
-                        matched_tiger_id = tiger_res.get("tiger_id") or "PT-01"
-                        unique_tigers_set.add(matched_tiger_id)
-                        
+                        matched_tiger_tag = tiger_res.get("tiger_id")  # e.g. "Tiger_001"
+                        similarity = tiger_res.get("similarity", 0.0)
+
+                        # Resolve (or create) the individual UUID for this tag
+                        individual_uuid = None
+                        if matched_tiger_tag:
+                            if matched_tiger_tag not in tiger_tag_to_uuid:
+                                tiger_tag_to_uuid[matched_tiger_tag] = db.upsert_individual(matched_tiger_tag)
+                            individual_uuid = tiger_tag_to_uuid[matched_tiger_tag]
+                            unique_tigers_set.add(matched_tiger_tag)
+
                         db.insert_capture({
                             "run_id": run_id,
                             "image_id": image_uuid,
                             "station_id": station_uuid,
-                            "confidence": conf,
-                            "individual_id": default_ind_uuid,
+                            "confidence": animal_conf,
+                            "individual_id": individual_uuid,
                             "timestamp": iso_time,
                         })
+
+                        # Update last_seen on the individual record
+                        if individual_uuid:
+                            db.update_individual_last_seen(individual_uuid, iso_time)
+
             except Exception as err:
                 logger.error("Error processing image %s: %s", fname, err)
 

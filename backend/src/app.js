@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { supabase } = require('./config/supabaseClient');
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');

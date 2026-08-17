@@ -75,14 +75,27 @@ class SupabaseClient:
             return False
 
     def get_first_station_id(self) -> Optional[str]:
-        """Gets a valid station UUID from the database to link captures."""
+        """Gets a valid station UUID from the database to link captures.
+        Also caches the station's geometry so captures can inherit it.
+        """
         if not self.url or not self.key:
             return None
-        endpoint = f"{self.url}/rest/v1/stations?select=id&limit=1"
+        endpoint = f"{self.url}/rest/v1/stations?select=id,geom&limit=1"
         try:
             res = requests.get(endpoint, headers=self.headers)
             if res.status_code == 200 and res.json():
-                return res.json()[0].get("id")
+                row = res.json()[0]
+                station_id = row.get("id")
+                # Cache geom as WKT for use in capture inserts
+                geom = row.get("geom")
+                if geom and isinstance(geom, dict) and geom.get("coordinates"):
+                    coords = geom["coordinates"]  # [lng, lat]
+                    self._station_geom_wkt = f"SRID=4326;POINT({coords[0]} {coords[1]})"
+                else:
+                    # Pench Tiger Reserve centroid fallback
+                    self._station_geom_wkt = "SRID=4326;POINT(79.297 21.728)"
+                logger.info("Station geom WKT: %s", self._station_geom_wkt)
+                return station_id
         except Exception as e:
             logger.warning("Error fetching station: %s", e)
         return None
@@ -99,6 +112,68 @@ class SupabaseClient:
         except Exception as e:
             logger.warning("Error fetching individual: %s", e)
         return None
+
+    def upsert_individual(self, tiger_tag: str) -> Optional[str]:
+        """
+        Look up an individual by their ML tag (e.g. 'Tiger_001').
+        If found, return their UUID. If not found, create a new row and return UUID.
+        This ensures each unique tiger from the ML pipeline maps to exactly one
+        database record, preventing duplicates across runs.
+        """
+        if not self.url or not self.key:
+            return None
+
+        # Step 1: Try to find existing individual by tag
+        endpoint = f"{self.url}/rest/v1/individuals?select=id,tag&tag=eq.{tiger_tag}&limit=1"
+        try:
+            res = requests.get(endpoint, headers=self.headers)
+            if res.status_code == 200:
+                rows = res.json()
+                if rows and len(rows) > 0:
+                    existing_id = rows[0].get("id")
+                    logger.info("Found existing individual %s → UUID %s", tiger_tag, existing_id)
+                    return existing_id
+        except Exception as e:
+            logger.warning("Error looking up individual %s: %s", tiger_tag, e)
+
+        # Step 2: Not found — create a new individual row
+        now_iso = datetime.utcnow().isoformat()
+        # Generate a human-readable name from the tag (Tiger_001 → Tiger 001)
+        display_name = tiger_tag.replace("_", " ")
+        payload = {
+            "tag": tiger_tag,
+            "name": display_name,
+            "first_seen": now_iso,
+            "last_seen": now_iso,
+            "sex": "unknown",
+            "notes": f"Auto-registered by AI pipeline during batch ingest. Tag: {tiger_tag}.",
+        }
+        create_endpoint = f"{self.url}/rest/v1/individuals"
+        try:
+            res = requests.post(create_endpoint, json=payload, headers=self.headers)
+            if res.status_code in (200, 201):
+                rows = res.json()
+                new_id = rows[0].get("id") if isinstance(rows, list) and rows else None
+                logger.info("Created new individual %s → UUID %s", tiger_tag, new_id)
+                return new_id
+            else:
+                logger.error("Failed to create individual %s: HTTP %d %s", tiger_tag, res.status_code, res.text)
+        except Exception as e:
+            logger.error("Error creating individual %s: %s", tiger_tag, e)
+
+        return None
+
+    def update_individual_last_seen(self, individual_uuid: str, timestamp_iso: str) -> bool:
+        """Updates the last_seen timestamp for an individual after a new capture."""
+        if not self.url or not self.key or not individual_uuid:
+            return False
+        endpoint = f"{self.url}/rest/v1/individuals?id=eq.{individual_uuid}"
+        try:
+            res = requests.patch(endpoint, json={"last_seen": timestamp_iso}, headers=self.headers)
+            return res.status_code in (200, 204)
+        except Exception as e:
+            logger.warning("Error updating last_seen for %s: %s", individual_uuid, e)
+            return False
 
     def insert_raw_image(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Inserts a processed image record into the `raw_images` table."""
@@ -133,16 +208,27 @@ class SupabaseClient:
             return None
 
     def insert_capture(self, data: Dict[str, Any]) -> bool:
-        """Inserts a detection/capture record into the `captures` table."""
+        """Inserts a detection/capture record into the `captures` table.
+        The captures.geom column is NOT NULL — we always supply a WKT point
+        derived from the station's geom (cached during get_first_station_id)
+        or falling back to the Pench Tiger Reserve centroid.
+        """
         if not self.url or not self.key:
             return False
 
-        # Exact schema: id, run_id, image_id, individual_id, station_id, timestamp, match_confidence, review_status
+        # Resolve geom: use cached station geom or custom override or Pench centroid
+        geom_wkt = (
+            data.get("geom")
+            or getattr(self, "_station_geom_wkt", None)
+            or "SRID=4326;POINT(79.297 21.728)"
+        )
+
         payload = {
             "run_id": data.get("run_id"),
             "match_confidence": data.get("confidence") or data.get("match_confidence", 0.95),
             "review_status": data.get("review_status", "auto_match"),
             "timestamp": data.get("timestamp") or datetime.utcnow().isoformat(),
+            "geom": geom_wkt,
         }
 
         if data.get("image_id"):
