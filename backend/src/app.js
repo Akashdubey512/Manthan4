@@ -11,6 +11,7 @@ const occupancyRoutes = require('./routes/occupancy.routes');
 const alertsRoutes = require('./routes/alerts.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const auditRoutes = require('./routes/audit.routes');
+const chatRoutes = require('./routes/chat.routes');
 const app = express();
 
 app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
@@ -27,6 +28,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/api/settings', settingsRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/stations', stationsRoutes);
+app.use('/api/chat', chatRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
 module.exports = app;
