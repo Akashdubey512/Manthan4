@@ -1,0 +1,11 @@
+{
+  "name": "pench-tiger-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automated Camera Trap Triage & Tiger Movement Intelligence System",
+  "scripts": {
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd frontend && npm run dev",
+    "start:ml": "cd ml_server && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+  }
+}

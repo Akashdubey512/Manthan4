@@ -176,120 +176,82 @@ export async function getTigers() {
   if (USE_MOCK) return MOCK_TIGERS;
   const { data, error } = await apiFetch('/api/tigers');
   if (error || !data) {
-    console.warn('[api] getTigers: backend unavailable, using mock data.', error);
-    return MOCK_TIGERS;
+    console.warn('[api] getTigers:', error);
+    return [];
   }
-  return Array.isArray(data) ? data.map(normaliseTiger) : (data.tigers ?? []).map(normaliseTiger);
+  const items = Array.isArray(data) ? data : (data.tigers ?? []);
+  return items.map(normaliseTiger);
 }
 
-/**
- * Single tiger entity by ID.
- * Endpoint: GET /api/tigers/:id
- * Status:   ✗ not implemented (falls back to mock)
- */
 export async function getTiger(id) {
   if (USE_MOCK) return MOCK_TIGERS.find((t) => t.id === id) ?? null;
   const { data, error } = await apiFetch(`/api/tigers/${id}`);
   if (error || !data) {
-    console.warn(`[api] getTiger(${id}): backend unavailable, using mock data.`, error);
-    return MOCK_TIGERS.find((t) => t.id === id) ?? null;
+    console.warn(`[api] getTiger(${id}):`, error);
+    return null;
   }
   return normaliseTiger(data);
 }
 
-/**
- * Camera-trap captures / detections for a single tiger.
- * Endpoint: GET /api/tigers/:id/captures
- * Status:   ✗ not implemented
- */
 export async function getTigerCaptures(id) {
   if (USE_MOCK) return [];
   const { data, error } = await apiFetch(`/api/tigers/${id}/captures`);
   if (error || !data) {
-    console.warn(`[api] getTigerCaptures(${id}): backend unavailable.`, error);
+    console.warn(`[api] getTigerCaptures(${id}):`, error);
     return [];
   }
   return Array.isArray(data) ? data : (data.captures ?? []);
 }
 
-/**
- * Home-range geometry for a single tiger.
- * Endpoint: GET /api/tigers/:id/home-range
- * Status:   ✗ not implemented
- *
- * Expected shape: GeoJSON Polygon/Feature  — { type: 'Feature', geometry: {...}, properties: {...} }
- * UI fallback:    current Circle radius approach (homeRangeKm2 → metres radius)
- */
 export async function getTigerHomeRange(id) {
-  if (USE_MOCK) {
-    // Return null: UI falls back to Circle radius from tiger.homeRangeKm2
-    return null;
-  }
+  if (USE_MOCK) return null;
   const { data, error } = await apiFetch(`/api/tigers/${id}/home-range`);
   if (error || !data) {
-    console.warn(`[api] getTigerHomeRange(${id}): backend unavailable.`, error);
+    console.warn(`[api] getTigerHomeRange(${id}):`, error);
     return null;
   }
-  return data; // GeoJSON Feature
+  return data;
 }
 
-/**
- * Movement trails / GPS tracks for all tigers.
- * Endpoint: none yet — may become GET /api/tigers/:id/tracks or similar.
- * Status:   ✗ not implemented (falls back to mock)
- *
- * Shape: { [tigerId]: [[lat, lng], ...] }
- */
 export async function getTrails() {
   if (USE_MOCK) return MOCK_TRAILS;
-  // TODO: replace with per-tiger endpoint when available
-  console.warn('[api] getTrails: backend endpoint not yet defined, using mock data.');
-  return MOCK_TRAILS;
+  const { data, error } = await apiFetch('/api/tigers/trails');
+  if (error || !data) {
+    return {};
+  }
+  return data;
 }
 
-/**
- * Camera trap / station network.
- * Endpoint: GET /api/stations
- * Status:   ✗ not implemented (falls back to mock cameras)
- */
 export async function getCameras() {
   if (USE_MOCK) return MOCK_CAMERAS;
   const { data, error } = await apiFetch('/api/stations');
   if (error || !data) {
-    console.warn('[api] getCameras (stations): backend unavailable, using mock data.', error);
-    return MOCK_CAMERAS;
+    console.warn('[api] getCameras (stations):', error);
+    return [];
   }
-  return Array.isArray(data) ? data.map(normaliseStation) : (data.stations ?? []).map(normaliseStation);
+  const items = Array.isArray(data) ? data : (data.stations ?? []);
+  return items.map(normaliseStation);
 }
 
-/**
- * All detections / capture records across the reserve.
- * Endpoint: GET /api/captures
- * Status:   ✗ not implemented
- */
 export async function getCaptures() {
   if (USE_MOCK) return [];
   const { data, error } = await apiFetch('/api/captures');
   if (error || !data) {
-    console.warn('[api] getCaptures: backend unavailable.', error);
+    console.warn('[api] getCaptures:', error);
     return [];
   }
   return Array.isArray(data) ? data : (data.captures ?? []);
 }
 
-/**
- * Active incident and anomaly alerts.
- * Endpoint: GET /api/alerts
- * Status:   ✗ not implemented (falls back to mock)
- */
 export async function getAlerts() {
   if (USE_MOCK) return MOCK_ALERTS;
   const { data, error } = await apiFetch('/api/alerts');
   if (error || !data) {
-    console.warn('[api] getAlerts: backend unavailable, using mock data.', error);
-    return MOCK_ALERTS;
+    console.warn('[api] getAlerts:', error);
+    return [];
   }
-  return Array.isArray(data) ? data.map(normaliseAlert) : (data.alerts ?? []).map(normaliseAlert);
+  const items = Array.isArray(data) ? data : (data.alerts ?? []);
+  return items.map(normaliseAlert);
 }
 
 /**
