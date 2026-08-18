@@ -278,3 +278,19 @@ html, body {
   background-color: var(--bg-elevated) !important;
 }
 
+/* ─── Hunter Threat Alert Animations ─────────────────────────────────────── */
+@keyframes hunterBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.96); }
+}
+
+@keyframes hunterBannerSlide {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes threatModalAppear {
+  from { transform: scale(0.92) translateY(12px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+

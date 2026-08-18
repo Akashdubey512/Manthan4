@@ -147,9 +147,11 @@ function TigerPopup({ tiger }) {
 }
 
 // ─── Spatial GIS Operational Map Centerpiece ───────────────────────────────
+import { MOCK_HUNTER_THREAT } from '../services/mockData';
+
 const PENCH_CENTER = [21.7250, 79.3000];
 
-function SpatialMap({ tigers, trails, cameras, selectedTiger, onSelectTiger }) {
+function SpatialMap({ tigers, trails, cameras, selectedTiger, onSelectTiger, onOpenHunterThreat }) {
   const statusColor = { normal: 'var(--status-normal)', warning: 'var(--status-warning)', critical: 'var(--status-critical)' };
 
   const nominalCount = tigers.filter(t => t.status === 'normal').length;
@@ -173,6 +175,7 @@ function SpatialMap({ tigers, trails, cameras, selectedTiger, onSelectTiger }) {
           <MapIcon size={14} color="var(--text-muted)" /> Pench Reserve GIS Operational Map
         </span>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+          <span style={{ color: '#E54D42', fontWeight: 700 }}>● 🚨 POACHER ALERT (1)</span>
           <span style={{ color: 'var(--status-normal)' }}>● NOMINAL ({nominalCount})</span>
           <span style={{ color: 'var(--status-warning)' }}>● WATCH ({watchCount})</span>
           <span style={{ color: 'var(--status-critical)' }}>● ANOMALY ({anomalyCount})</span>
@@ -212,6 +215,83 @@ function SpatialMap({ tigers, trails, cameras, selectedTiger, onSelectTiger }) {
               />
             );
           })}
+
+          {/* Hunter / Poacher Threat Marker at CAM-103 */}
+          <Circle
+            center={[MOCK_HUNTER_THREAT.lat, MOCK_HUNTER_THREAT.lng]}
+            radius={320}
+            pathOptions={{
+              color: '#E54D42',
+              fillColor: '#E54D42',
+              fillOpacity: 0.2,
+              weight: 2,
+              dashArray: '4 3',
+            }}
+            eventHandlers={{
+              click: () => {
+                if (onOpenHunterThreat) onOpenHunterThreat();
+              }
+            }}
+          />
+          <Circle
+            center={[MOCK_HUNTER_THREAT.lat, MOCK_HUNTER_THREAT.lng]}
+            radius={140}
+            pathOptions={{
+              color: '#FF0033',
+              fillColor: '#E54D42',
+              fillOpacity: 0.95,
+              weight: 3,
+            }}
+            eventHandlers={{
+              click: () => {
+                if (onOpenHunterThreat) onOpenHunterThreat();
+              }
+            }}
+          >
+            <Popup>
+              <div style={{ fontFamily: 'var(--font-sans)', minWidth: '220px', padding: '0.65rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: '#FFA8A8' }}>CAM-103</span>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#E54D42', letterSpacing: '0.05em' }}>
+                    🚨 ARMED POACHER DETECTED
+                  </span>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.35rem', color: '#FFF' }}>
+                  Armed Nocturnal Intrusion
+                </div>
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.68rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Weapon Conf.</span>
+                    <span style={{ color: '#D68A27', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>92.4% FIREARM</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Proximity</span>
+                    <span style={{ color: '#E54D42', fontWeight: 600 }}>PT-03 (~650m)</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (onOpenHunterThreat) onOpenHunterThreat();
+                  }}
+                  style={{
+                    marginTop: '0.5rem',
+                    width: '100%',
+                    padding: '0.35rem',
+                    backgroundColor: '#E54D42',
+                    border: 'none',
+                    borderRadius: '2px',
+                    color: '#FFF',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  INTERCEPT THREAT →
+                </button>
+              </div>
+            </Popup>
+          </Circle>
 
           {/* Camera Trap Markers */}
           {cameras && cameras.map(cam => (
@@ -287,11 +367,12 @@ function SpatialMap({ tigers, trails, cameras, selectedTiger, onSelectTiger }) {
 }
 
 // ─── Compact Operational Incident Table (Bottom Panel) ────────────────────
-function OperationalIncidentTable({ alerts, tigers, selectedAlertId, onSelectAlert, onNavigate }) {
+function OperationalIncidentTable({ alerts, tigers, selectedAlertId, onSelectAlert, onNavigate, onOpenHunterThreat }) {
   if (!alerts) return null;
 
   const severityBadge = (type) => {
     switch (type) {
+      case 'hunter':   return <span className="badge badge-critical" style={{ background: '#E54D42', color: '#FFF' }}>🚨 POACHER</span>;
       case 'critical': return <span className="badge badge-critical">CRITICAL</span>;
       case 'warning':  return <span className="badge badge-warning">WARNING</span>;
       case 'info':     return <span className="badge badge-info">INFO</span>;
@@ -377,27 +458,52 @@ function OperationalIncidentTable({ alerts, tigers, selectedAlertId, onSelectAle
                     </span>
                   </td>
                   <td style={{ padding: '0.45rem 0.75rem', textAlign: 'right' }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectAlert(alert);
-                      }}
-                      style={{
-                        background: 'var(--bg-input)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '0.2rem 0.5rem',
-                        fontSize: '0.6rem',
-                        fontFamily: 'var(--font-mono)',
-                        color: 'var(--text-secondary)',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.2rem',
-                      }}
-                    >
-                      <Crosshair size={10} /> FOCUS
-                    </button>
+                    {alert.type === 'hunter' ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onOpenHunterThreat) onOpenHunterThreat();
+                        }}
+                        style={{
+                          background: '#E54D42',
+                          border: '1px solid #E54D42',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '0.2rem 0.5rem',
+                          fontSize: '0.6rem',
+                          fontFamily: 'var(--font-mono)',
+                          fontWeight: 700,
+                          color: '#FFF',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.2rem',
+                        }}
+                      >
+                        <ShieldAlert size={10} /> INTERCEPT
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectAlert(alert);
+                        }}
+                        style={{
+                          background: 'var(--bg-input)',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '0.2rem 0.5rem',
+                          fontSize: '0.6rem',
+                          fontFamily: 'var(--font-mono)',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.2rem',
+                        }}
+                      >
+                        <Crosshair size={10} /> FOCUS
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -410,7 +516,7 @@ function OperationalIncidentTable({ alerts, tigers, selectedAlertId, onSelectAle
 }
 
 // ─── Main Overview Component ───────────────────────────────────────────────
-export default function IntelligenceOverview({ selectedTiger, onSelectTiger, onNavigate }) {
+export default function IntelligenceOverview({ selectedTiger, onSelectTiger, onNavigate, onOpenHunterThreat }) {
   const [stats, setStats]           = useState(null);
   const [tigers, setTigers]         = useState([]);
   const [alerts, setAlerts]         = useState([]);
@@ -438,11 +544,15 @@ export default function IntelligenceOverview({ selectedTiger, onSelectTiger, onN
 
   const handleSelectAlert = useCallback((alert) => {
     setSelectedAlert(alert);
+    if (alert && alert.type === 'hunter') {
+      if (onOpenHunterThreat) onOpenHunterThreat();
+      return;
+    }
     if (alert && alert.tigerId) {
       const match = tigers.find(t => t.id === alert.tigerId);
       if (match && onSelectTiger) onSelectTiger(match);
     }
-  }, [tigers, onSelectTiger]);
+  }, [tigers, onSelectTiger, onOpenHunterThreat]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflow: 'hidden' }}>
@@ -456,63 +566,62 @@ export default function IntelligenceOverview({ selectedTiger, onSelectTiger, onN
           cameras={cameras}
           selectedTiger={selectedTiger}
           onSelectTiger={onSelectTiger}
+          onOpenHunterThreat={onOpenHunterThreat}
         />
 
-        {/* Bottom Incident Table */}
-       {/* WOW INTELLIGENCE PANELS */}
-<div
-  style={{
-    height: '330px',
-    flexShrink: 0,
-    display: 'grid',
-    gridTemplateColumns: '1.05fr 1fr 1fr',
-    gap: '1px',
-    background: 'var(--border-subtle)',
-    borderTop: '1px solid var(--border-subtle)',
-    overflow: 'hidden'
-  }}
->
-  {/* Movement anomaly */}
-  <div
-    style={{
-      background: 'var(--bg-base)',
-      padding: '0.65rem',
-      overflowY: 'auto'
-    }}
-  >
-    <MovementAnomaly
-      onViewTiger={(tigerId) => {
-        const tiger = tigers.find(t => t.id === tigerId);
+        {/* WOW INTELLIGENCE PANELS */}
+        <div
+          style={{
+            height: '330px',
+            flexShrink: 0,
+            display: 'grid',
+            gridTemplateColumns: '1.05fr 1fr 1fr',
+            gap: '1px',
+            background: 'var(--border-subtle)',
+            borderTop: '1px solid var(--border-subtle)',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Movement anomaly */}
+          <div
+            style={{
+              background: 'var(--bg-base)',
+              padding: '0.65rem',
+              overflowY: 'auto'
+            }}
+          >
+            <MovementAnomaly
+              onViewTiger={(tigerId) => {
+                const tiger = tigers.find(t => t.id === tigerId);
+                if (tiger && onSelectTiger) {
+                  onSelectTiger(tiger);
+                }
+              }}
+            />
+          </div>
 
-        if (tiger && onSelectTiger) {
-          onSelectTiger(tiger);
-        }
-      }}
-    />
-  </div>
+          {/* Timeline */}
+          <div
+            style={{
+              background: 'var(--bg-base)',
+              padding: '0.65rem',
+              overflowY: 'auto'
+            }}
+          >
+            <TigerTimeline tigerId="T-04" />
+          </div>
 
-  {/* Timeline */}
-  <div
-    style={{
-      background: 'var(--bg-base)',
-      padding: '0.65rem',
-      overflowY: 'auto'
-    }}
-  >
-    <TigerTimeline tigerId="T-04" />
-  </div>
-
-  {/* AI analysis */}
-  <div
-    style={{
-      background: 'var(--bg-base)',
-      padding: '0.65rem',
-      overflowY: 'auto'
-    }}
-  >
-    <AICameraAnalysis />
-  </div>
-</div>
+          {/* AI analysis */}
+          <div
+            style={{
+              background: 'var(--bg-base)',
+              padding: '0.65rem',
+              overflowY: 'auto'
+            }}
+          >
+            <AICameraAnalysis onInspectHunter={onOpenHunterThreat} />
+          </div>
+        </div>
       </div>
     </div>
   );

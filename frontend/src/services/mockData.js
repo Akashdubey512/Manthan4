@@ -103,7 +103,30 @@ export const MOCK_CAMERAS = [
   { id: 'CAM-107', lat: 21.710, lng: 79.298, status: 'online',  zone: 'Core B',    lastPing: '5 mins ago', images: 126 },
 ];
 
+export const MOCK_HUNTER_THREAT = {
+  id: 'ALT-999',
+  type: 'hunter',
+  subtype: 'hunter_detection',
+  title: 'Armed Poacher / Intruder Detected',
+  cameraId: 'CAM-103',
+  cameraZone: 'Sector 4 Buffer (North-East)',
+  lat: 21.738,
+  lng: 79.285,
+  text: 'CRITICAL: Armed Intruder / Suspected Poacher detected at CAM-103. Long-barrel firearm & night intrusion signature verified.',
+  time: '4 mins ago',
+  location: 'Sector 4 Buffer (CAM-103)',
+  threatLevel: 'CODE RED',
+  humanConfidence: 98.6,
+  weaponConfidence: 92.4,
+  individualsCount: 2,
+  activity: 'Nocturnal Trespass with Firearm / Snare Equipment',
+  proximityThreat: 'PT-03 (Maya) is 650m North-East',
+  dispatchedUnit: null,
+  status: 'ACTIVE_THREAT',
+};
+
 export const MOCK_ALERTS = [
+  MOCK_HUNTER_THREAT,
   { id: 'ALT-892', type: 'critical', tigerId: 'PT-04', text: 'Movement Anomaly: PT-04 (Raiyya) detected outside typical territory boundaries.', time: '10 mins ago', location: 'Turia Edge' },
   { id: 'ALT-891', type: 'warning',  tigerId: 'PT-03', text: 'Proximity Alert: PT-03 (Maya) approaching village buffer zone.', time: '2 hours ago', location: 'Buffer North' },
   { id: 'ALT-890', type: 'info',     tigerId: null,    text: 'Camera Trap Sync: 142 new images ingested from Sector 4.', time: '4 hours ago', location: 'Sector 4' },

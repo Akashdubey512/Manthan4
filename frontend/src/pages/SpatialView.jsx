@@ -27,6 +27,7 @@ function ScaleControl() {
 
 // ─── Tactical Layer Control Floating Card ────────────────────────────────────
 const LAYERS = [
+  { id: 'hunters',    label: '🚨 Hunter / Poacher Alert (1)', color: '#E54D42' },
   { id: 'cameras',    label: 'Camera Traps (124)',  color: '#3182CE' },
   { id: 'tigers',     label: 'Tiger Positions (4)',  color: '#4E8B71' },
   { id: 'trails',     label: 'Movement Vector Paths',color: '#94A3B8' },
@@ -39,7 +40,7 @@ function LayerPanel({ activeLayers, onToggle }) {
     <div style={{
       position: 'absolute', top: '1rem', right: '1rem', zIndex: 800,
       background: 'var(--bg-panel)', border: '1px solid var(--border-default)',
-      borderRadius: 'var(--radius-md)', padding: '0.75rem 0.9rem', minWidth: '200px',
+      borderRadius: 'var(--radius-md)', padding: '0.75rem 0.9rem', minWidth: '220px',
       boxShadow: 'var(--shadow-dropdown)',
     }}>
       <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.35rem' }}>
@@ -69,26 +70,29 @@ function LayerPanel({ activeLayers, onToggle }) {
 }
 
 // ─── Entity Inspector Floating Card ─────────────────────────────────────────
-function DetailPanel({ entity, type, onClose, onViewRegistry }) {
+function DetailPanel({ entity, type, onClose, onViewRegistry, onOpenThreatModal }) {
   if (!entity) return null;
   const statusColor = {
     normal: 'var(--status-normal)', warning: 'var(--status-warning)',
     critical: 'var(--status-critical)', online: 'var(--status-normal)', offline: 'var(--status-critical)',
+    hunter: '#E54D42',
   };
-  const color = statusColor[entity.status] || 'var(--text-muted)';
+  const color = type === 'hunter' ? '#E54D42' : (statusColor[entity.status] || 'var(--text-muted)');
 
   return (
     <div style={{
       position: 'absolute', bottom: '1.25rem', left: '1.25rem', zIndex: 800,
       background: 'var(--bg-panel)', border: `1px solid ${color}`,
-      borderRadius: 'var(--radius-md)', width: '310px',
+      borderRadius: 'var(--radius-md)', width: '320px',
       boxShadow: 'var(--shadow-dropdown)', overflow: 'hidden',
     }}>
       {/* Header */}
-      <div style={{ padding: '0.65rem 0.85rem', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ padding: '0.65rem 0.85rem', background: type === 'hunter' ? '#260B0B' : 'var(--bg-elevated)', borderBottom: `1px solid ${type === 'hunter' ? '#E54D42' : 'var(--border-subtle)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{entity.id} · {type.toUpperCase()} INSPECTOR</span>
-          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{entity.name || entity.id}</div>
+          <span style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: type === 'hunter' ? '#FFA8A8' : 'var(--text-muted)' }}>{entity.id || 'INCIDENT'} · {type.toUpperCase()} INSPECTOR</span>
+          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: type === 'hunter' ? '#FFF' : 'var(--text-primary)' }}>
+            {type === 'hunter' ? '🚨 ARMED POACHER DETECTED' : (entity.name || entity.id)}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
           {type === 'tiger' && (
@@ -104,30 +108,74 @@ function DetailPanel({ entity, type, onClose, onViewRegistry }) {
 
       {/* Body */}
       <div style={{ padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', alignItems: 'center' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Operational Status</span>
-          <span className={`badge badge-${entity.status === 'online' ? 'normal' : entity.status === 'offline' ? 'critical' : entity.status}`}>
-            ● {entity.status.toUpperCase()}
-          </span>
-        </div>
-        {type === 'tiger' && <>
-          <Row label="Territory Zone" value={entity.zone} />
-          <Row label="Confirmed Sightings" value={entity.sightings} />
-          <Row label="Movement Pattern" value={<span style={{ textTransform: 'capitalize' }}>{entity.movementTrend}</span>} />
-          <Row label="Stripe Match Conf." value={`${entity.stripeMatchConfidence}%`} mono />
-          <Row label="Last Telemetry Ping" value={new Date(entity.lastSeen).toLocaleString()} />
-          {entity.notes && (
-            <div style={{ marginTop: '0.25rem', padding: '0.45rem 0.6rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.4, borderLeft: `2.5 solid ${color}` }}>
-              {entity.notes}
+        {type === 'hunter' ? (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Threat Level</span>
+              <span className="badge badge-critical" style={{ background: '#E54D42', color: '#FFF' }}>
+                ● CODE RED
+              </span>
             </div>
-          )}
-        </>}
-        {type === 'camera' && <>
-          <Row label="Sector / Zone" value={entity.zone} />
-          <Row label="Last Signal Transmission" value={entity.lastPing} />
-          <Row label="Captured Images" value={entity.images} />
-          <Row label="GPS Fix" value={`${entity.lat.toFixed(4)}°N ${entity.lng.toFixed(4)}°E`} mono />
-        </>}
+            <Row label="Camera Trap" value={entity.cameraId || 'CAM-103'} mono />
+            <Row label="Sector / Zone" value={entity.cameraZone || entity.location || 'Sector 4 Buffer'} />
+            <Row label="Human Detection" value={`${entity.humanConfidence || 98.6}% Confirmed`} mono />
+            <Row label="Weapon Signature" value={`${entity.weaponConfidence || 92.4}% (Firearm)`} mono />
+            <Row label="Nearby Wildlife" value={entity.proximityThreat || 'PT-03 (~650m)'} />
+            <Row label="GPS Fix" value={`${(entity.lat || 21.738).toFixed(4)}°N ${(entity.lng || 79.285).toFixed(4)}°E`} mono />
+
+            {onOpenThreatModal && (
+              <button
+                onClick={onOpenThreatModal}
+                style={{
+                  marginTop: '0.35rem',
+                  padding: '0.5rem',
+                  backgroundColor: '#E54D42',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  color: '#FFF',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <span>OPEN FULL THREAT INTERCEPT</span>
+                <ChevronRight size={13} />
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Operational Status</span>
+              <span className={`badge badge-${entity.status === 'online' ? 'normal' : entity.status === 'offline' ? 'critical' : entity.status}`}>
+                ● {entity.status?.toUpperCase()}
+              </span>
+            </div>
+            {type === 'tiger' && <>
+              <Row label="Territory Zone" value={entity.zone} />
+              <Row label="Confirmed Sightings" value={entity.sightings} />
+              <Row label="Movement Pattern" value={<span style={{ textTransform: 'capitalize' }}>{entity.movementTrend}</span>} />
+              <Row label="Stripe Match Conf." value={`${entity.stripeMatchConfidence}%`} mono />
+              <Row label="Last Telemetry Ping" value={new Date(entity.lastSeen).toLocaleString()} />
+              {entity.notes && (
+                <div style={{ marginTop: '0.25rem', padding: '0.45rem 0.6rem', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.4, borderLeft: `2.5px solid ${color}` }}>
+                  {entity.notes}
+                </div>
+              )}
+            </>}
+            {type === 'camera' && <>
+              <Row label="Sector / Zone" value={entity.zone} />
+              <Row label="Last Signal Transmission" value={entity.lastPing} />
+              <Row label="Captured Images" value={entity.images} />
+              <Row label="GPS Fix" value={`${entity.lat.toFixed(4)}°N ${entity.lng.toFixed(4)}°E`} mono />
+            </>}
+          </>
+        )}
       </div>
     </div>
   );
@@ -142,15 +190,17 @@ function Row({ label, value, mono }) {
   );
 }
 
+import { MOCK_HUNTER_THREAT } from '../services/mockData';
+
 // ─── Main Spatial View ───────────────────────────────────────────────────────
 const PENCH_CENTER = [21.725, 79.302];
-const STATUS_COLOR = { normal: '#4E8B71', warning: '#D68A27', critical: '#E54D42', info: '#3182CE', online: '#4E8B71', offline: '#E54D42' };
+const STATUS_COLOR = { normal: '#4E8B71', warning: '#D68A27', critical: '#E54D42', info: '#3182CE', online: '#4E8B71', offline: '#E54D42', hunter: '#E54D42' };
 
-export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }) {
+export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate, onOpenThreatModal }) {
   const [tigers, setTigers] = useState([]);
   const [cameras, setCameras] = useState([]);
   const [trails, setTrails] = useState({});
-  const [activeLayers, setActiveLayers] = useState(new Set(['cameras', 'tigers', 'zones', 'anomalies', 'trails']));
+  const [activeLayers, setActiveLayers] = useState(new Set(['hunters', 'cameras', 'tigers', 'zones', 'anomalies', 'trails']));
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [entityType, setEntityType] = useState(null);
   const [mapTarget, setMapTarget] = useState(null);
@@ -199,6 +249,12 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
     setMapTarget({ lat: cam.lat, lng: cam.lng });
   }, []);
 
+  const handleHunterClick = useCallback((threat) => {
+    setSelectedEntity(threat || MOCK_HUNTER_THREAT);
+    setEntityType('hunter');
+    setMapTarget({ lat: MOCK_HUNTER_THREAT.lat, lng: MOCK_HUNTER_THREAT.lng });
+  }, []);
+
   const handleClose = useCallback(() => {
     setSelectedEntity(null);
     setEntityType(null);
@@ -214,6 +270,8 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
           <MapIcon size={14} color="var(--status-normal)" /> Full-Screen GIS Spatial Telemetry
         </span>
         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+          <span style={{ color: '#E54D42', fontWeight: 700 }}>🚨 ACTIVE THREAT: 1 POACHER INCIDENT</span>
+          <span>|</span>
           <span>ENTITIES: <strong style={{ color: 'var(--text-primary)' }}>{tigers.length}</strong> TRACKED</span>
           <span>|</span>
           <span>CAMERAS: <strong style={{ color: 'var(--status-normal)' }}>{cameras.filter(c => c.status === 'online').length}/{cameras.length}</strong> ACTIVE</span>
@@ -255,6 +313,35 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
             );
           })}
 
+          {/* Hunter / Poacher Threat Marker */}
+          {activeLayers.has('hunters') && (
+            <React.Fragment>
+              <Circle
+                center={[MOCK_HUNTER_THREAT.lat, MOCK_HUNTER_THREAT.lng]}
+                radius={380}
+                pathOptions={{
+                  color: '#E54D42',
+                  fillColor: '#E54D42',
+                  fillOpacity: 0.22,
+                  weight: 2,
+                  dashArray: '5 4',
+                }}
+                eventHandlers={{ click: () => handleHunterClick(MOCK_HUNTER_THREAT) }}
+              />
+              <Circle
+                center={[MOCK_HUNTER_THREAT.lat, MOCK_HUNTER_THREAT.lng]}
+                radius={160}
+                pathOptions={{
+                  color: '#FF0033',
+                  fillColor: '#E54D42',
+                  fillOpacity: 0.95,
+                  weight: 3,
+                }}
+                eventHandlers={{ click: () => handleHunterClick(MOCK_HUNTER_THREAT) }}
+              />
+            </React.Fragment>
+          )}
+
           {/* Tiger markers */}
           {activeLayers.has('tigers') && tigers.map(t => {
             const isSelected = selectedEntity?.id === t.id;
@@ -291,6 +378,7 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
           type={entityType}
           onClose={handleClose}
           onViewRegistry={() => { if (onSelectTiger) onSelectTiger(selectedEntity); if (onNavigate) onNavigate('registry'); }}
+          onOpenThreatModal={onOpenThreatModal}
         />
 
         {/* Floating Tactical Legend */}
@@ -302,7 +390,12 @@ export default function SpatialView({ selectedTiger, onSelectTiger, onNavigate }
           boxShadow: 'var(--shadow-dropdown)',
         }}>
           <div style={{ marginBottom: '0.35rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.6rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.2rem' }}>GIS Symbology</div>
-          {[{ color: '#4E8B71', label: 'Nominal Range' }, { color: '#D68A27', label: 'Watch Zone' }, { color: '#E54D42', label: 'Breach / Anomaly' }, { color: '#3182CE', label: 'Camera Trap' }].map(l => (
+          {[
+            { color: '#E54D42', label: '🚨 Poacher Alert (CAM-103)' },
+            { color: '#4E8B71', label: 'Nominal Range' },
+            { color: '#D68A27', label: 'Watch Zone' },
+            { color: '#3182CE', label: 'Camera Trap' }
+          ].map(l => (
             <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
               <span>{l.label}</span>

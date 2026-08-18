@@ -216,6 +216,7 @@ function normaliseAlert(raw) {
   if (severity === 'movement_anomaly') severity = 'critical';
   else if (severity === 'proximity_alert') severity = 'warning';
   else if (severity === 'camera_sync') severity = 'info';
+  else if (severity === 'hunter' || severity === 'poacher' || raw.subtype === 'hunter_detection') severity = 'hunter';
 
   const tId = raw.individual_id ?? raw.tiger_id ?? raw.tigerId ?? (raw.individuals?.tag || null);
 
@@ -223,10 +224,18 @@ function normaliseAlert(raw) {
     id: raw.id ? String(raw.id).slice(0, 8) : 'ALT-NEW',
     dbId: raw.id,
     type: severity,
+    subtype: raw.subtype || (severity === 'hunter' ? 'hunter_detection' : null),
     tigerId: tId,
+    cameraId: raw.cameraId || 'CAM-103',
+    lat: raw.lat || 21.738,
+    lng: raw.lng || 79.285,
     text: raw.message ?? raw.text ?? raw.description ?? 'Telemetry notification logged in field.',
     time: raw.created_at ? new Date(raw.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (raw.time ?? 'Recent'),
     location: raw.location ?? (tId ? 'Core Zone' : 'Reserve Perimeter'),
+    humanConfidence: raw.humanConfidence ?? 98.6,
+    weaponConfidence: raw.weaponConfidence ?? 92.4,
+    threatLevel: raw.threatLevel ?? (severity === 'hunter' ? 'CODE RED' : 'STANDARD'),
+    proximityThreat: raw.proximityThreat ?? 'PT-03 (Maya) within 650m',
   };
 }
 

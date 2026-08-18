@@ -8,6 +8,9 @@ import SpatialView from './pages/SpatialView';
 import TigerRegistry from './pages/TigerRegistry';
 import DataIngest from './pages/DataIngest';
 import IntelligenceAssistant from './pages/IntelligenceAssistant';
+import HunterAlertBanner from './components/HunterAlertBanner';
+import HunterThreatModal from './components/HunterThreatModal';
+import { MOCK_HUNTER_THREAT } from './services/mockData';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -418,6 +421,7 @@ export default function App() {
   const [selectedTiger, setSelectedTiger] = useState(null);
   const [showRegister, setShowRegister]   = useState(false);
   const [telemetryStats, setTelemetryStats] = useState(null);
+  const [showHunterModal, setShowHunterModal] = useState(false);
 
   // Periodic telemetry refresh
   useEffect(() => {
@@ -454,6 +458,7 @@ export default function App() {
             selectedTiger={selectedTiger}
             onSelectTiger={setSelectedTiger}
             onNavigate={handleNavigate}
+            onOpenHunterThreat={() => setShowHunterModal(true)}
           />
         );
       case 'spatial':
@@ -462,6 +467,7 @@ export default function App() {
             selectedTiger={selectedTiger}
             onSelectTiger={setSelectedTiger}
             onNavigate={handleNavigate}
+            onOpenThreatModal={() => setShowHunterModal(true)}
           />
         );
       case 'registry':
@@ -477,7 +483,12 @@ export default function App() {
       case 'ai_assistant':
         return <IntelligenceAssistant />;
       default:
-        return <IntelligenceOverview onNavigate={handleNavigate} />;
+        return (
+          <IntelligenceOverview
+            onNavigate={handleNavigate}
+            onOpenHunterThreat={() => setShowHunterModal(true)}
+          />
+        );
     }
   };
 
@@ -496,6 +507,12 @@ export default function App() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         <TopCommandBar activeTab={activeTab} />
         
+        {/* Global Emergency Poacher Alert Bar */}
+        <HunterAlertBanner
+          threat={MOCK_HUNTER_THREAT}
+          onOpenModal={() => setShowHunterModal(true)}
+        />
+        
         <main style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
             {renderContent()}
@@ -511,6 +528,15 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Tactical Hunter / Poacher Threat Intercept Modal */}
+      {showHunterModal && (
+        <HunterThreatModal
+          threat={MOCK_HUNTER_THREAT}
+          onClose={() => setShowHunterModal(false)}
+          onNavigateSpatial={() => handleNavigate('spatial')}
+        />
+      )}
     </div>
   );
 }
