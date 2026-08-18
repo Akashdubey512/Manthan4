@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Circle, Polyline, Popup, ZoomControl, useMap } from 'react-leaflet';
 import { ShieldAlert, AlertTriangle, Info, CheckCircle2, Camera, Map as MapIcon, Crosshair, ExternalLink, Activity, ArrowRight } from 'lucide-react';
 import { getTigers, getAlerts, getStats, getTrails, getCameras } from '../services/api';
+import MovementAnomaly from '../components/wow/MovementAnomaly';
+import TigerTimeline from '../components/wow/TigerTimeline';
+import AICameraAnalysis from '../components/wow/AICameraAnalysis';
 import L from 'leaflet';
 
 // ─── Map Imperative Controller ─────────────────────────────────────────────
@@ -456,13 +459,60 @@ export default function IntelligenceOverview({ selectedTiger, onSelectTiger, onN
         />
 
         {/* Bottom Incident Table */}
-        <OperationalIncidentTable
-          alerts={alerts}
-          tigers={tigers}
-          selectedAlertId={selectedAlert?.id ?? null}
-          onSelectAlert={handleSelectAlert}
-          onNavigate={onNavigate}
-        />
+       {/* WOW INTELLIGENCE PANELS */}
+<div
+  style={{
+    height: '330px',
+    flexShrink: 0,
+    display: 'grid',
+    gridTemplateColumns: '1.05fr 1fr 1fr',
+    gap: '1px',
+    background: 'var(--border-subtle)',
+    borderTop: '1px solid var(--border-subtle)',
+    overflow: 'hidden'
+  }}
+>
+  {/* Movement anomaly */}
+  <div
+    style={{
+      background: 'var(--bg-base)',
+      padding: '0.65rem',
+      overflowY: 'auto'
+    }}
+  >
+    <MovementAnomaly
+      onViewTiger={(tigerId) => {
+        const tiger = tigers.find(t => t.id === tigerId);
+
+        if (tiger && onSelectTiger) {
+          onSelectTiger(tiger);
+        }
+      }}
+    />
+  </div>
+
+  {/* Timeline */}
+  <div
+    style={{
+      background: 'var(--bg-base)',
+      padding: '0.65rem',
+      overflowY: 'auto'
+    }}
+  >
+    <TigerTimeline tigerId="T-04" />
+  </div>
+
+  {/* AI analysis */}
+  <div
+    style={{
+      background: 'var(--bg-base)',
+      padding: '0.65rem',
+      overflowY: 'auto'
+    }}
+  >
+    <AICameraAnalysis />
+  </div>
+</div>
       </div>
     </div>
   );
